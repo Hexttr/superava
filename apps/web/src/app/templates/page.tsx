@@ -32,20 +32,18 @@ export default async function TemplatesPage() {
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
         {templates.map((template) => (
-          <SectionCard
-            key={template.id}
-            eyebrow={template.group}
-            title={template.title}
-          >
-            <div className="space-y-3">
-              <StatusPill label={template.previewLabel} tone="accent" />
-              <p>{templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}</p>
-              <p>{templateTextBySlug[template.slug]?.description ?? template.description}</p>
-              <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/50 p-5 text-center text-sm text-slate-400">
-                Превью {template.title}
+          <div key={template.id} id={template.slug} className="scroll-mt-24">
+            <SectionCard eyebrow={template.group} title={template.title}>
+              <div className="space-y-3">
+                <StatusPill label={template.previewLabel} tone="accent" />
+                <p>{templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}</p>
+                <p>{templateTextBySlug[template.slug]?.description ?? template.description}</p>
+                <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/50 p-5 text-center text-sm text-slate-400">
+                  Превью {template.title}
+                </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          </div>
         ))}
       </section>
 

@@ -193,9 +193,10 @@ export default async function Home() {
         <SectionCard eyebrow="Категории" title="Праздничные подборки">
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {holidayCategoryCards.map((category, index) => (
-              <div
+              <Link
                 key={category.title}
-                className={`aspect-square overflow-hidden rounded-[1.75rem] border border-white/10 p-4 ${
+                href={category.href ?? "/templates"}
+                className={`aspect-square overflow-hidden rounded-[1.75rem] border border-white/10 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/30 ${
                   index % 3 === 0
                     ? "bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.32),_transparent_58%),linear-gradient(160deg,_rgba(15,23,42,0.96),_rgba(91,33,182,0.38))]"
                     : index % 3 === 1
@@ -210,9 +211,12 @@ export default async function Home() {
                     <p className="mt-2 text-sm leading-6 text-slate-200/85">
                       {category.subtitle}
                     </p>
+                    <p className="mt-4 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200/80">
+                      Открыть сцену
+                    </p>
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </SectionCard>

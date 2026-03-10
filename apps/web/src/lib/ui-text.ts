@@ -44,9 +44,18 @@ export const templateTextBySlug: Record<string, { subtitle: string; description:
     subtitle: "Праздничный кадр",
     description: "Яркая сцена для открытки или поста.",
   },
+  "birthday-rooftop-sunset": {
+    subtitle: "День рождения на rooftop-террасе",
+    description: "Закатный luxury-ужин на крыше с бокалом шампанского и журнальной подачей.",
+  },
 };
 
-export const holidayCategoryCards = [
+export const holidayCategoryCards: ReadonlyArray<{
+  title: string;
+  subtitle: string;
+  badge: string;
+  href?: string;
+}> = [
   {
     title: "8 марта",
     subtitle: "Нежный свет, цветы и мягкий праздничный портрет.",
@@ -59,8 +68,9 @@ export const holidayCategoryCards = [
   },
   {
     title: "День рождения",
-    subtitle: "Торжественный образ, торт, свечи и тёплая эмоция.",
+    subtitle: "Закатная rooftop-сцена с luxury-настроением, шампанским и персональным fashion-кадром.",
     badge: "Событие",
+    href: "/templates#birthday-rooftop-sunset",
   },
   {
     title: "День победы",

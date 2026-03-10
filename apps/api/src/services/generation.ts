@@ -61,11 +61,31 @@ export async function listGenerations(userId: string): Promise<GenerationRecord[
     include: { assets: true },
   });
 
+  const templateIds = Array.from(
+    new Set(
+      requests
+        .map((request) => request.templateId)
+        .filter((templateId): templateId is string => Boolean(templateId))
+    )
+  );
+  const templates = templateIds.length
+    ? await prisma.promptTemplate.findMany({
+        where: {
+          id: {
+            in: templateIds,
+          },
+        },
+      })
+    : [];
+  const templatesById = new Map(templates.map((template) => [template.id, template]));
+
   return requests.map((r) => ({
     id: r.id,
     mode: r.mode as "free" | "template",
     status: r.status as GenerationRecord["status"],
-    title: r.prompt ?? (r.templateId ? "Шаблон" : "Свободный запрос"),
+    title:
+      r.prompt ??
+      (r.templateId ? templatesById.get(r.templateId)?.title ?? "Шаблон" : "Свободный запрос"),
     subtitle: statusSubtitle(r.status, r.errorMessage),
     createdAt: r.createdAt.toISOString(),
     previewUrl: r.assets[0] ? `/api/v1/generations/${r.id}/preview` : undefined,
