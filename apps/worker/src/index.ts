@@ -3,14 +3,7 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: [".env", "../../.env"] });
 // Watcher reload marker for local env changes.
 
-import { GeminiProviderAdapter } from "@superava/ai-provider";
-import {
-  GoogleGenAI,
-  Modality,
-  createPartFromBase64,
-  type GenerateContentResponse,
-  type GoogleGenAIOptions,
-} from "@google/genai";
+import { DEFAULT_GENERATION_BASE_PROMPT, GeminiProviderAdapter } from "@superava/ai-provider";
 import { randomUUID } from "node:crypto";
 import PgBoss from "pg-boss";
 import sharp from "sharp";
@@ -26,20 +19,7 @@ const proxyUrl =
   process.env.HTTP_PROXY ??
   process.env.ALL_PROXY ??
   undefined;
-const proxyFetch: typeof globalThis.fetch | undefined = proxyUrl
-  ? ((input, init) =>
-      undiciFetch(input, {
-        ...init,
-        dispatcher: new ProxyAgent(proxyUrl),
-      })) as typeof globalThis.fetch
-  : undefined;
-const aiOptions: GoogleGenAIOptions & { fetch?: typeof globalThis.fetch } = {
-  apiKey: geminiApiKey,
-  fetch: proxyFetch,
-};
-const ai = geminiApiKey
-  ? new GoogleGenAI(aiOptions)
-  : null;
+const proxyDispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is required");
@@ -51,12 +31,12 @@ const boss = new PgBoss({
 });
 const GENERATION_QUEUE = "generation";
 
-function ensureGeminiClient() {
-  if (!ai) {
+function ensureGeminiApiKey() {
+  if (!geminiApiKey) {
     throw new Error("gemini_api_key_missing");
   }
 
-  return ai;
+  return geminiApiKey;
 }
 
 async function buildReferenceParts(
@@ -85,20 +65,18 @@ async function buildReferenceParts(
         })
         .toBuffer();
 
-      return createPartFromBase64(normalized.toString("base64"), "image/jpeg");
+      return {
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: normalized.toString("base64"),
+        },
+      };
     })
   );
 }
 
-function extractGeneratedImage(response: GenerateContentResponse) {
-  if (response.data) {
-    return {
-      data: response.data,
-      mimeType: "image/png",
-    };
-  }
-
-  for (const candidate of response.candidates ?? []) {
+function extractGeneratedImage(response: any) {
+  for (const candidate of response?.candidates ?? []) {
     for (const part of candidate.content?.parts ?? []) {
       if (part.inlineData?.data) {
         return {
@@ -109,7 +87,9 @@ function extractGeneratedImage(response: GenerateContentResponse) {
     }
   }
 
-  throw new Error(response.text || "gemini_image_not_returned");
+  throw new Error(
+    typeof response?.text === "string" && response.text ? response.text : "gemini_image_not_returned"
+  );
 }
 
 async function renderGenerationImage(args: {
@@ -117,24 +97,52 @@ async function renderGenerationImage(args: {
   prompt: string;
   shots: Array<{ storageKey: string | null }>;
 }) {
-  const client = ensureGeminiClient();
+  const apiKey = ensureGeminiApiKey();
   const referenceParts = await buildReferenceParts(args.shots);
-  const response = await client.models.generateContent({
-    model: args.model,
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: args.prompt }, ...referenceParts],
+  const response = await undiciFetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${args.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      dispatcher: proxyDispatcher,
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
       },
-    ],
-    config: {
-      responseModalities: [Modality.TEXT, Modality.IMAGE],
-      imageConfig: {
-        aspectRatio: "1:1",
-      },
-    },
-  });
-  const generated = extractGeneratedImage(response);
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: args.prompt }, ...referenceParts],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ["TEXT", "IMAGE"],
+        },
+      }),
+    }
+  );
+  const rawText = await response.text();
+  const parsed = rawText ? tryParseJson(rawText) : null;
+
+  if (!response.ok) {
+    const errorMessage =
+      parsed &&
+      typeof parsed === "object" &&
+      "error" in parsed &&
+      parsed.error &&
+      typeof parsed.error === "object" &&
+      "message" in parsed.error &&
+      typeof parsed.error.message === "string"
+        ? parsed.error.message
+        : `gemini_request_failed_${response.status}`;
+
+    throw new Error(errorMessage);
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("gemini_invalid_response");
+  }
+
+  const generated = extractGeneratedImage(parsed);
   const outputBuffer = Buffer.from(generated.data, "base64");
   const normalized = await sharp(outputBuffer).rotate().png().toBuffer();
   const metadata = await sharp(normalized).metadata();
@@ -145,6 +153,14 @@ async function renderGenerationImage(args: {
     width: metadata.width ?? 1024,
     height: metadata.height ?? 1024,
   };
+}
+
+function tryParseJson(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 async function runJob(payload: {
@@ -171,6 +187,9 @@ async function runJob(payload: {
   const template = payload.templateId
     ? await prisma.promptTemplate.findUnique({ where: { id: payload.templateId } })
     : null;
+  const appConfig = await prisma.appConfig.findUnique({
+    where: { id: "default" },
+  });
 
   const prepared = provider.preparePayload({
     input: {
@@ -205,8 +224,12 @@ async function runJob(payload: {
           group: template.group as "vip" | "holiday",
           previewLabel: template.previewLabel,
           description: template.description,
+          promptSkeleton: template.promptSkeleton,
         }
       : undefined,
+    config: {
+      basePrompt: appConfig?.baseGenerationPrompt ?? DEFAULT_GENERATION_BASE_PROMPT,
+    },
   });
 
   const generated = await renderGenerationImage({

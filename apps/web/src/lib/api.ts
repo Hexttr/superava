@@ -2,13 +2,16 @@ import {
   apiRoutes,
   createGenerationInputSchema,
   demoGenerations,
+  demoGenerationPromptConfig,
   demoPhotoProfile,
   demoTemplates,
+  generationPromptConfigSchema,
   generationRecordSchema,
   photoProfileSchema,
   promptTemplateSchema,
   shotTypeSchema,
   type CreateGenerationInput,
+  type GenerationPromptConfig,
   type GenerationRecord,
   type PhotoProfile,
   type PromptTemplate,
@@ -58,6 +61,14 @@ export async function getGenerations(): Promise<GenerationRecord[]> {
     const items = Array.isArray(parsed.items) ? parsed.items : [];
     return items.map((item) => generationRecordSchema.parse(item));
   });
+}
+
+export async function getGenerationPromptConfig(): Promise<GenerationPromptConfig> {
+  return safeFetchJson(
+    apiRoutes.generationPromptConfig,
+    demoGenerationPromptConfig,
+    (value) => generationPromptConfigSchema.parse(value)
+  );
 }
 
 export async function uploadProfileShot(

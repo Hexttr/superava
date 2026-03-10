@@ -1,4 +1,8 @@
-import type { CreateGenerationInput, GenerationRecord } from "@superava/shared";
+import {
+  normalizeGeminiErrorMessage,
+  type CreateGenerationInput,
+  type GenerationRecord,
+} from "@superava/shared";
 import { prisma } from "../db.js";
 import { boss, JOB_NAMES } from "../queue.js";
 import { getOrCreateProfile } from "./profile.js";
@@ -62,13 +66,13 @@ export async function listGenerations(userId: string): Promise<GenerationRecord[
     mode: r.mode as "free" | "template",
     status: r.status as GenerationRecord["status"],
     title: r.prompt ?? (r.templateId ? "Шаблон" : "Свободный запрос"),
-    subtitle: statusSubtitle(r.status),
+    subtitle: statusSubtitle(r.status, r.errorMessage),
     createdAt: r.createdAt.toISOString(),
     previewUrl: r.assets[0] ? `/api/v1/generations/${r.id}/preview` : undefined,
   }));
 }
 
-function statusSubtitle(status: string): string {
+function statusSubtitle(status: string, errorMessage?: string | null): string {
   switch (status) {
     case "queued":
       return "Готовим кадры";
@@ -79,7 +83,7 @@ function statusSubtitle(status: string): string {
     case "completed":
       return "Готово";
     case "failed":
-      return "Не удалось";
+      return normalizeGeminiErrorMessage(errorMessage);
     default:
       return status;
   }

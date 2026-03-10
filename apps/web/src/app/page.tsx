@@ -3,160 +3,180 @@ import Link from "next/link";
 import { SectionCard, StatusPill } from "@superava/ui";
 import { GenerationComposer } from "@/components/generation-composer";
 import { GenerationFeed } from "@/components/generation-feed";
-import { getGenerations, getProfile, getTemplates } from "@/lib/api";
+import { ProfileProgressLine } from "@/components/profile-progress-line";
 import {
-  shotAngleLabels,
-  shotLabels,
-  shotStatusLabels,
+  getGenerationPromptConfig,
+  getGenerations,
+  getProfile,
+  getTemplates,
+} from "@/lib/api";
+import {
+  holidayCategoryCards,
   templateTextBySlug,
 } from "@/lib/ui-text";
 
 export default async function Home() {
-  const [profile, templates, generations] = await Promise.all([
+  const [profile, templates, generations, generationPromptConfig] = await Promise.all([
     getProfile(),
     getTemplates(),
     getGenerations(),
+    getGenerationPromptConfig(),
   ]);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-      <section className="rounded-[2rem] border border-white/10 bg-white/6 p-5 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8">
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between gap-3">
-            <StatusPill label="MVP" tone="accent" />
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-              Gemini + Sharp + async jobs
-            </p>
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+      <section className="rounded-[2.25rem] border border-white/10 bg-white/6 p-6 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8 lg:p-10">
+        <div className="max-w-3xl">
+          <div className="flex flex-wrap items-center gap-3">
+            <StatusPill label="Superava" tone="accent" />
+            <StatusPill label="MVP concept" tone="neutral" />
           </div>
-
-          <div className="grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
-            <div>
-              <p className="text-sm font-medium uppercase tracking-[0.28em] text-cyan-300">
-                Superava
-              </p>
-              <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                Один профиль лица.
-                <br />
-                Красивые фото по запросу.
-              </h1>
-
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Link
-                  href="/onboarding"
-                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
-                >
-                  Создать профиль
-                </Link>
-                <Link
-                  href="/templates"
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
-                >
-                  Шаблоны
-                </Link>
-              </div>
-            </div>
-
-            <div className="rounded-[1.75rem] border border-cyan-400/20 bg-slate-950/70 p-4">
-              <p className="text-sm font-medium text-slate-400">
-                Готовность профиля
-              </p>
-              <div className="mt-3 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-4xl font-semibold text-white">
-                    {profile.completionPercent}%
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    6 ракурсов
-                  </p>
-                </div>
-                <StatusPill label="в работе" tone="success" />
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {profile.shots.map((shot) => (
-                  <div
-                    key={shot.id}
-                    className="rounded-2xl border border-white/8 bg-white/5 p-3"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-white">
-                        {shotLabels[shot.type]}
-                      </p>
-                      <StatusPill
-                        label={
-                          shot.status === "approved"
-                            ? shotStatusLabels.approved
-                            : shot.status === "missing"
-                              ? shotStatusLabels.missing
-                              : shotStatusLabels.uploaded
-                        }
-                        tone={
-                          shot.status === "approved"
-                            ? "success"
-                            : shot.status === "missing"
-                              ? "warning"
-                              : "accent"
-                        }
-                      />
-                    </div>
-                    <p className="mt-2 text-sm text-slate-400">
-                      {shotAngleLabels[shot.type]}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            Один профиль лица.
+            <br />
+            Любые красивые сцены под ваш стиль.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+            Соберите профиль из шести ракурсов, выберите готовую идею или опишите свою сцену.
+            Дальше Superava превращает это в фотоконтент, который выглядит цельно и персонально.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300"
+            >
+              Собрать профиль
+            </Link>
+            <Link
+              href="/templates"
+              className="inline-flex items-center justify-center rounded-full border border-white/15 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+            >
+              Смотреть шаблоны
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-3">
-        <SectionCard eyebrow="Профиль" title="6 ракурсов">
-          <p>Анфас, улыбка, 45° и профили.</p>
-        </SectionCard>
+      <section className="mt-6 grid gap-4 xl:grid-cols-[1.6fr_0.8fr]">
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-[0_12px_60px_rgba(17,24,39,0.16)] backdrop-blur sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.26em] text-cyan-300">
+                Профиль лица
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+                6 ракурсов для стабильной генерации
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+                Чем полнее профиль, тем аккуратнее сохраняется лицо в готовых кадрах.
+              </p>
+            </div>
+            <div className="shrink-0">
+              <p className="text-right text-3xl font-semibold text-white">
+                {profile.completionPercent}%
+              </p>
+              <p className="mt-1 text-right text-sm text-slate-500">готовность профиля</p>
+            </div>
+          </div>
 
-        <SectionCard eyebrow="Режимы" title="2 сценария">
-          <p>Свободный запрос и готовые шаблоны.</p>
-        </SectionCard>
+          <div className="mt-6">
+            <ProfileProgressLine profile={profile} />
+          </div>
+        </div>
 
-        <SectionCard eyebrow="Фон" title="Без ожидания">
-          <p>Генерация идет отдельно, вы продолжаете выбирать.</p>
+        <div className="rounded-[2rem] border border-cyan-400/20 bg-slate-950/65 p-5 shadow-[0_12px_60px_rgba(17,24,39,0.16)]">
+          <StatusPill
+            label={profile.completionPercent === 100 ? "Готово" : "Заполняется"}
+            tone={profile.completionPercent === 100 ? "success" : "accent"}
+          />
+          <h2 className="mt-4 text-2xl font-semibold text-white">
+            {profile.completionPercent === 100
+              ? "Можно запускать генерации"
+              : "Нужно заполнить профиль"}
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            {profile.completionPercent === 100
+              ? "Профиль собран. Можно тестировать сцены и доводить внешний вид продукта."
+              : "Добавьте недостающие ракурсы, чтобы генерации держали лицо стабильно и выглядели аккуратнее."}
+          </p>
+          <div className="mt-6">
+            <Link
+              href={profile.completionPercent === 100 ? "#create" : "/onboarding"}
+              className={`inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${
+                profile.completionPercent === 100
+                  ? "bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                  : "border border-white/15 text-white hover:bg-white/6"
+              }`}
+            >
+              {profile.completionPercent === 100 ? "Перейти к генерации" : "Дозаполнить профиль"}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="create" className="mt-6">
+        <SectionCard eyebrow="Создать" title="Новый кадр">
+          <GenerationComposer
+            templates={templates}
+            profile={profile}
+            generationPromptConfig={generationPromptConfig}
+            showTemplates={false}
+          />
         </SectionCard>
       </section>
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <SectionCard eyebrow="Шаблоны" title="Подборка">
-          <div className="grid gap-3">
-            {templates.map((template) => (
+      <section className="mt-6 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <SectionCard eyebrow="Шаблоны" title="Готовые сцены">
+          <div className="grid gap-4">
+            {templates.map((template, index) => (
               <div
                 key={template.id}
-                className="rounded-3xl border border-white/10 bg-slate-950/55 p-4"
+                className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/55"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-lg font-semibold text-white">
-                      {template.title}
-                    </p>
-                    <p className="text-sm text-slate-400">
-                      {templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}
-                    </p>
+                <div
+                  className={`aspect-[16/10] w-full ${
+                    index % 2 === 0
+                      ? "bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.35),_transparent_55%),linear-gradient(135deg,_rgba(17,24,39,0.96),_rgba(14,116,144,0.5))]"
+                      : "bg-[radial-gradient(circle_at_top_right,_rgba(251,191,36,0.35),_transparent_55%),linear-gradient(135deg,_rgba(17,24,39,0.96),_rgba(120,53,15,0.4))]"
+                  }`}
+                >
+                  <div className="flex h-full flex-col justify-between p-5">
+                    <StatusPill label={template.previewLabel} tone="accent" />
+                    <div>
+                      <p className="text-xl font-semibold text-white">{template.title}</p>
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-slate-200/90">
+                        {templateTextBySlug[template.slug]?.description ?? template.description}
+                      </p>
+                    </div>
                   </div>
-                  <StatusPill label={template.previewLabel} tone="accent" />
                 </div>
-                <p className="mt-3 text-sm leading-6 text-slate-300">
-                  {templateTextBySlug[template.slug]?.description ?? template.description}
-                </p>
+                <div className="p-5">
+                  <p className="text-sm font-medium text-slate-200">
+                    {templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    Конкретный сценарий, который можно быстро адаптировать под лицо из профиля.
+                  </p>
+                </div>
               </div>
             ))}
           </div>
+          <div className="mt-5">
+            <Link
+              href="/templates"
+              className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200"
+            >
+              Все шаблоны
+            </Link>
+          </div>
         </SectionCard>
 
-        <SectionCard eyebrow="Мои генерации" title="Статусы">
+        <SectionCard eyebrow="Мои генерации" title="Последние результаты">
           <GenerationFeed
             generations={generations}
-            maxItems={3}
+            maxItems={4}
             compact
-            emptyText="Здесь появятся ваши новые кадры."
+            emptyText="Здесь будут появляться ваши свежие кадры."
           />
           <div className="mt-5">
             <Link
@@ -170,8 +190,31 @@ export default async function Home() {
       </section>
 
       <section className="mt-6">
-        <SectionCard eyebrow="Создать" title="Новая генерация">
-          <GenerationComposer templates={templates} profile={profile} />
+        <SectionCard eyebrow="Категории" title="Праздничные подборки">
+          <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+            {holidayCategoryCards.map((category, index) => (
+              <div
+                key={category.title}
+                className={`aspect-square overflow-hidden rounded-[1.75rem] border border-white/10 p-4 ${
+                  index % 3 === 0
+                    ? "bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.32),_transparent_58%),linear-gradient(160deg,_rgba(15,23,42,0.96),_rgba(91,33,182,0.38))]"
+                    : index % 3 === 1
+                      ? "bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.32),_transparent_58%),linear-gradient(160deg,_rgba(15,23,42,0.96),_rgba(8,145,178,0.38))]"
+                      : "bg-[radial-gradient(circle_at_top_left,_rgba(250,204,21,0.28),_transparent_58%),linear-gradient(160deg,_rgba(15,23,42,0.96),_rgba(133,77,14,0.35))]"
+                }`}
+              >
+                <div className="flex h-full flex-col justify-between">
+                  <StatusPill label={category.badge} tone="neutral" />
+                  <div>
+                    <p className="text-xl font-semibold text-white">{category.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-200/85">
+                      {category.subtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </SectionCard>
       </section>
     </main>

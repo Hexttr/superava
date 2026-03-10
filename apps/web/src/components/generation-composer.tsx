@@ -1,81 +1,36 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import type { PhotoProfile, PromptTemplate } from "@superava/shared";
+import {
+  buildGenerationPrompt,
+  normalizeGeminiErrorMessage,
+  type GenerationPromptConfig,
+  type PhotoProfile,
+  type PromptTemplate,
+} from "@superava/shared";
 import { StatusPill } from "@superava/ui";
 import { createGenerationRequest } from "@/lib/api";
+import { saveBrowserGeneration } from "@/lib/browser-generations";
 
-const BROWSER_KEY_STORAGE = "superava.browserGeminiApiKey";
-const BROWSER_MODEL_STORAGE = "superava.browserGeminiModel";
-
-const browserImageModels = [
-  "gemini-2.5-flash-image",
-  "gemini-3-pro-image-preview",
-  "nano-banana-pro-preview",
-  "gemini-3.1-flash-image-preview",
-] as const;
-
-type BrowserGenerationResult = {
-  imageUrl: string | null;
-  error: string | null;
-  rawResponse: string | null;
-  model: string;
-};
+const browserApiKey = process.env.NEXT_PUBLIC_GEMINI_BROWSER_KEY?.trim() ?? "";
+const browserModel =
+  process.env.NEXT_PUBLIC_GEMINI_BROWSER_MODEL?.trim() ?? "gemini-2.5-flash-image";
+const generationTransport = process.env.NEXT_PUBLIC_GEMINI_TRANSPORT?.trim() ?? "server";
+const browserTransportEnabled = generationTransport === "browser" && Boolean(browserApiKey);
 
 export function GenerationComposer(props: {
   templates: PromptTemplate[];
   profile: PhotoProfile;
+  generationPromptConfig: GenerationPromptConfig;
+  showTemplates?: boolean;
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [message, setMessage] = useState<string | null>(null);
-  const [browserMode, setBrowserMode] = useState(false);
-  const [browserApiKey, setBrowserApiKey] = useState("");
-  const [browserModel, setBrowserModel] = useState<(typeof browserImageModels)[number]>(
-    "gemini-2.5-flash-image"
-  );
-  const [browserResult, setBrowserResult] = useState<BrowserGenerationResult | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const savedApiKey = window.localStorage.getItem(BROWSER_KEY_STORAGE);
-    const savedModel = window.localStorage.getItem(BROWSER_MODEL_STORAGE);
-
-    if (savedApiKey) {
-      setBrowserApiKey(savedApiKey);
-    }
-
-    if (
-      savedModel &&
-      browserImageModels.includes(savedModel as (typeof browserImageModels)[number])
-    ) {
-      setBrowserModel(savedModel as (typeof browserImageModels)[number]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(BROWSER_KEY_STORAGE, browserApiKey);
-  }, [browserApiKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.localStorage.setItem(BROWSER_MODEL_STORAGE, browserModel);
-  }, [browserModel]);
 
   function submitFreePrompt() {
     const trimmed = prompt.trim();
@@ -84,8 +39,12 @@ export function GenerationComposer(props: {
       return;
     }
 
-    if (browserMode) {
-      submitBrowserPrompt(trimmed);
+    if (browserTransportEnabled) {
+      submitBrowserPrompt({
+        prompt: trimmed,
+        title: trimmed,
+        mode: "free",
+      });
       return;
     }
 
@@ -107,14 +66,13 @@ export function GenerationComposer(props: {
     });
   }
 
-  function submitBrowserPrompt(trimmedPrompt: string) {
-    if (!browserApiKey.trim()) {
-      setMessage("Введите Gemini API key для браузерного теста.");
-      return;
-    }
-
+  function submitBrowserPrompt(args: {
+    prompt: string;
+    title: string;
+    mode: "free" | "template";
+    template?: PromptTemplate;
+  }) {
     setMessage(null);
-    setBrowserResult(null);
 
     startTransition(async () => {
       try {
@@ -153,12 +111,15 @@ export function GenerationComposer(props: {
             {
               parts: [
                 {
-                  text: [
-                    "Create exactly one photorealistic image.",
-                    "Preserve the identity from the reference face photos.",
-                    "Keep facial proportions, age range, ethnicity, and likeness stable.",
-                    trimmedPrompt,
-                  ].join(" "),
+                  text: buildGenerationPrompt({
+                    input: {
+                      mode: args.mode,
+                      prompt: args.prompt,
+                    },
+                    profile: props.profile,
+                    config: props.generationPromptConfig,
+                    template: args.template,
+                  }),
                 },
                 ...referenceParts,
               ],
@@ -170,7 +131,7 @@ export function GenerationComposer(props: {
         };
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${browserModel}:generateContent?key=${encodeURIComponent(browserApiKey.trim())}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${browserModel}:generateContent?key=${encodeURIComponent(browserApiKey)}`,
           {
             method: "POST",
             headers: {
@@ -184,7 +145,7 @@ export function GenerationComposer(props: {
         const parsed = tryParseJson(rawText);
 
         if (!response.ok) {
-          const errorMessage =
+          const rawErrorMessage =
             parsed &&
             typeof parsed === "object" &&
             "error" in parsed &&
@@ -194,53 +155,84 @@ export function GenerationComposer(props: {
             typeof parsed.error.message === "string"
               ? parsed.error.message
               : `Gemini вернул ${response.status}.`;
+          const errorMessage = normalizeGeminiErrorMessage(rawErrorMessage);
 
-          setBrowserResult({
-            imageUrl: null,
-            error: errorMessage,
-            rawResponse: rawText,
-            model: browserModel,
+          saveBrowserGeneration({
+            id: `browser-${crypto.randomUUID()}`,
+            mode: args.mode,
+            status: "failed",
+            title: args.title,
+            subtitle: errorMessage,
+            createdAt: new Date().toISOString(),
+            source: "browser",
           });
+          setMessage(errorMessage);
           return;
         }
 
         const generatedImage = extractImageFromGeminiResponse(parsed);
 
         if (!generatedImage) {
-          setBrowserResult({
-            imageUrl: null,
-            error: "Gemini не вернул картинку.",
-            rawResponse: rawText,
-            model: browserModel,
+          saveBrowserGeneration({
+            id: `browser-${crypto.randomUUID()}`,
+            mode: args.mode,
+            status: "failed",
+            title: args.title,
+            subtitle: "Gemini не вернул картинку.",
+            createdAt: new Date().toISOString(),
+            source: "browser",
           });
+          setMessage("Gemini не вернул картинку.");
           return;
         }
 
-        setBrowserResult({
-          imageUrl: `data:${generatedImage.mimeType};base64,${generatedImage.data}`,
-          error: null,
-          rawResponse: rawText,
-          model: browserModel,
+        saveBrowserGeneration({
+          id: `browser-${crypto.randomUUID()}`,
+          mode: args.mode,
+          status: "completed",
+          title: args.title,
+          subtitle: "Готово",
+          createdAt: new Date().toISOString(),
+          imageDataUrl: `data:${generatedImage.mimeType};base64,${generatedImage.data}`,
+          source: "browser",
         });
-        setMessage("Браузерный тест выполнен.");
+        setPrompt("");
+        setMessage("Генерация добавлена в мои генерации.");
       } catch (error) {
-        setBrowserResult({
-          imageUrl: null,
-          error: error instanceof Error ? error.message : "Браузерный тест не удался.",
-          rawResponse: null,
-          model: browserModel,
+        const errorMessage =
+          error instanceof Error ? error.message : "Браузерная генерация не удалась.";
+
+        saveBrowserGeneration({
+          id: `browser-${crypto.randomUUID()}`,
+          mode: args.mode,
+          status: "failed",
+          title: args.title,
+          subtitle: errorMessage,
+          createdAt: new Date().toISOString(),
+          source: "browser",
         });
+        setMessage(errorMessage);
       }
     });
   }
 
-  function submitTemplate(templateId: string) {
+  function submitTemplate(template: PromptTemplate) {
+    if (browserTransportEnabled) {
+      submitBrowserPrompt({
+        mode: "template",
+        title: template.title,
+        prompt: template.promptSkeleton,
+        template,
+      });
+      return;
+    }
+
     setMessage(null);
     startTransition(async () => {
       try {
         const result = await createGenerationRequest({
           mode: "template",
-          templateId,
+          templateId: template.id,
         });
         setMessage(`Шаблон запущен: ${result.jobId}`);
         router.refresh();
@@ -260,62 +252,25 @@ export function GenerationComposer(props: {
         </div>
       ) : null}
 
-      <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-base font-semibold text-white">Свободный запрос</p>
+      <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-base font-semibold text-white">Опишите кадр</p>
+            <p className="mt-1 text-sm text-slate-400">
+              Лицо возьмем из вашего профиля, а сцену соберем по описанию.
+            </p>
+          </div>
           <StatusPill
-            label={isPending ? "отправка" : browserMode ? "браузер" : "сервер"}
+            label={isPending ? "запуск" : browserTransportEnabled ? "preview" : "server"}
             tone="accent"
           />
         </div>
         <textarea
           value={prompt}
           onChange={(event) => setPrompt(event.currentTarget.value)}
-          placeholder="Я на крыше Токио ночью, кинематографично, дорогой свет..."
-          className="mt-4 min-h-32 w-full rounded-3xl border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
+          placeholder="Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
+          className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
-        <label className="mt-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
-          <input
-            type="checkbox"
-            checked={browserMode}
-            onChange={(event) => setBrowserMode(event.currentTarget.checked)}
-            className="h-4 w-4 accent-cyan-400"
-          />
-          Тестировать Gemini прямо из браузера
-        </label>
-
-        {browserMode ? (
-          <div className="mt-4 space-y-3 rounded-3xl border border-cyan-400/20 bg-cyan-400/8 p-4">
-            <p className="text-sm text-cyan-100">
-              Ключ хранится только в этом браузере. Результат не попадет в историю генераций.
-            </p>
-            <input
-              type="password"
-              value={browserApiKey}
-              onChange={(event) => setBrowserApiKey(event.currentTarget.value)}
-              placeholder="Gemini API key"
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
-            />
-            <select
-              value={browserModel}
-              onChange={(event) =>
-                setBrowserModel(event.currentTarget.value as (typeof browserImageModels)[number])
-              }
-              className="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-white outline-none focus:border-cyan-400/40"
-            >
-              {browserImageModels.map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs leading-5 text-slate-400">
-              В тест отправятся все загруженные ракурсы профиля. Это нужно только для локальной
-              проверки идеи через твой браузер и VPN.
-            </p>
-          </div>
-        ) : null}
-
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"
@@ -323,7 +278,7 @@ export function GenerationComposer(props: {
             disabled={isPending}
             className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {browserMode ? "Тест в браузере" : "Сгенерировать"}
+            Сгенерировать
           </button>
           <Link
             href="/generations"
@@ -332,80 +287,42 @@ export function GenerationComposer(props: {
             Мои генерации
           </Link>
         </div>
+        <p className="mt-4 text-xs leading-5 text-slate-500">
+          {browserTransportEnabled
+            ? `Сейчас используется браузерный preview-маршрут через ${browserModel}.`
+            : "Сейчас используется серверный маршрут генерации через API и worker."}
+        </p>
       </div>
 
-      {browserMode ? (
-        <div className="rounded-3xl border border-white/10 bg-slate-950/55 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-base font-semibold text-white">Результат браузерного теста</p>
-            <StatusPill
-              label={browserResult?.model ?? browserModel}
-              tone={browserResult?.imageUrl ? "success" : "accent"}
-            />
-          </div>
-
-          {browserResult?.imageUrl ? (
-            <Image
-              src={browserResult.imageUrl}
-              alt="Browser generation result"
-              width={1024}
-              height={1024}
-              unoptimized
-              className="mt-4 aspect-square w-full rounded-[1.75rem] border border-white/10 object-cover"
-            />
-          ) : (
-            <div className="mt-4 flex aspect-square w-full items-center justify-center rounded-[1.75rem] border border-dashed border-white/10 bg-white/5 text-sm text-slate-500">
-              Здесь появится картинка или ошибка Gemini.
+      {props.showTemplates !== false ? (
+        <div className="grid gap-3">
+          {props.templates.map((template) => (
+            <div
+              key={template.id}
+              className="rounded-3xl border border-white/10 bg-slate-950/55 p-4"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-white">{template.title}</p>
+                  <p className="mt-1 text-sm text-slate-400">{template.subtitle}</p>
+                </div>
+                <StatusPill label={template.previewLabel} tone="accent" />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{template.description}</p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => submitTemplate(template)}
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  Выбрать
+                </button>
+              </div>
             </div>
-          )}
-
-          {browserResult?.error ? (
-            <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
-              {browserResult.error}
-            </div>
-          ) : null}
-
-          {browserResult?.rawResponse ? (
-            <pre className="mt-4 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-4 text-xs leading-6 text-slate-300">
-              {browserResult.rawResponse}
-            </pre>
-          ) : null}
+          ))}
         </div>
       ) : null}
-
-      <div className="grid gap-3">
-        {props.templates.map((template) => (
-          <div
-            key={template.id}
-            className="rounded-3xl border border-white/10 bg-slate-950/55 p-4"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-base font-semibold text-white">
-                  {template.title}
-                </p>
-                <p className="mt-1 text-sm text-slate-400">
-                  {template.subtitle}
-                </p>
-              </div>
-              <StatusPill label={template.previewLabel} tone="accent" />
-            </div>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              {template.description}
-            </p>
-            <div className="mt-4">
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => submitTemplate(template.id)}
-                className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                Выбрать
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

@@ -46,6 +46,39 @@ export const templateTextBySlug: Record<string, { subtitle: string; description:
   },
 };
 
+export const holidayCategoryCards = [
+  {
+    title: "8 марта",
+    subtitle: "Нежный свет, цветы и мягкий праздничный портрет.",
+    badge: "Весна",
+  },
+  {
+    title: "Новый год",
+    subtitle: "Огни, блеск, вечерний снег и атмосферные кадры.",
+    badge: "Праздник",
+  },
+  {
+    title: "День рождения",
+    subtitle: "Торжественный образ, торт, свечи и тёплая эмоция.",
+    badge: "Событие",
+  },
+  {
+    title: "День победы",
+    subtitle: "Парадный стиль, уличный свет и историческое настроение.",
+    badge: "Память",
+  },
+  {
+    title: "23 февраля",
+    subtitle: "Сдержанный характер, формальный кадр и сильная подача.",
+    badge: "Характер",
+  },
+  {
+    title: "Хэллоуин",
+    subtitle: "Тёмная сцена, неон, дым и яркий тематический образ.",
+    badge: "Mood",
+  },
+] as const;
+
 export const shotStatusLabels = {
   missing: "нужно фото",
   uploaded: "загружено",

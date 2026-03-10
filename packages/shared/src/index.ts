@@ -55,9 +55,70 @@ export const promptTemplateSchema = z.object({
   group: templateGroupSchema,
   previewLabel: z.string(),
   description: z.string(),
+  promptSkeleton: z.string(),
 });
 
 export type PromptTemplate = z.infer<typeof promptTemplateSchema>;
+
+export const generationPromptConfigSchema = z.object({
+  basePrompt: z.string(),
+});
+
+export type GenerationPromptConfig = z.infer<typeof generationPromptConfigSchema>;
+
+export const DEFAULT_GENERATION_BASE_PROMPT =
+  "Analyze all provided face photos as references of the same real person from multiple angles. Create exactly one highly realistic professional photo with studio-grade lighting, realistic skin texture, maximum facial likeness, and stable identity preservation. The generated person must be this exact person, with special attention to facial structure, eyes, nose, lips, jawline, skin tone, and overall resemblance. Prioritize realism, professional photography quality, and consistency over stylization. Avoid face drift, beauty-filter skin, duplicate people, distorted anatomy, and any changes that weaken resemblance unless explicitly requested.";
+
+export function normalizeGeminiErrorMessage(message?: string | null) {
+  const normalized = message?.trim();
+
+  if (!normalized) {
+    return "Не удалось получить ответ от Gemini.";
+  }
+
+  const lower = normalized.toLowerCase();
+
+  if (
+    lower.includes("resource has been exhausted") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("quota") ||
+    lower.includes("429")
+  ) {
+    return "Лимит Gemini временно исчерпан. Подождите немного и попробуйте снова.";
+  }
+
+  if (lower.includes("user location is not supported")) {
+    return "Gemini отклонил запрос по региону. Нужно проверить маршрут через VPN или proxy.";
+  }
+
+  if (lower.includes("api key not valid") || lower.includes("api_key_invalid")) {
+    return "Gemini отклонил API-ключ. Проверьте актуальность ключа.";
+  }
+
+  if (lower.includes("deadline") || lower.includes("timed out") || lower.includes("timeout")) {
+    return "Gemini отвечает слишком долго. Попробуйте повторить запрос.";
+  }
+
+  return normalized;
+}
+
+export function buildGenerationPrompt(args: {
+  input: CreateGenerationInput;
+  profile: PhotoProfile;
+  template?: PromptTemplate;
+  config?: GenerationPromptConfig;
+}) {
+  const promptParts = [
+    args.config?.basePrompt || DEFAULT_GENERATION_BASE_PROMPT,
+    args.template?.promptSkeleton ? `Template direction: ${args.template.promptSkeleton}` : undefined,
+    args.template?.title ? `Template title: ${args.template.title}.` : undefined,
+    args.input.prompt ? `User request: ${args.input.prompt}.` : undefined,
+    `Reference photos cover ${args.profile.shots.filter((shot) => shot.status !== "missing").length} face angles.`,
+    `Profile completeness: ${args.profile.completionPercent}%.`,
+  ].filter(Boolean);
+
+  return promptParts.join(" ");
+}
 
 export const generationRecordSchema = z.object({
   id: z.string(),
@@ -140,6 +201,8 @@ export const demoTemplates: PromptTemplate[] = [
     group: "vip",
     previewLabel: "VIP",
     description: "Дорогой свет, чистый портрет, эффектный кадр.",
+    promptSkeleton:
+      "Luxury editorial portrait, premium styling, professional studio light, cinematic finish, photorealistic skin texture.",
   },
   {
     id: "template-holiday-hero",
@@ -149,8 +212,14 @@ export const demoTemplates: PromptTemplate[] = [
     group: "holiday",
     previewLabel: "Holiday",
     description: "Праздничная сцена с аккуратной посадкой лица.",
+    promptSkeleton:
+      "Festive holiday portrait, polished lighting, elegant seasonal atmosphere, photorealistic result, clean face match.",
   },
 ];
+
+export const demoGenerationPromptConfig: GenerationPromptConfig = {
+  basePrompt: DEFAULT_GENERATION_BASE_PROMPT,
+};
 
 export const demoGenerations: GenerationRecord[] = [
   {
@@ -184,4 +253,5 @@ export const apiRoutes = {
   profile: "/api/v1/profile",
   templates: "/api/v1/templates",
   generations: "/api/v1/generations",
+  generationPromptConfig: "/api/v1/config/generation-prompt",
 } as const;

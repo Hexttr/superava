@@ -5,6 +5,7 @@ import multipart from "@fastify/multipart";
 import {
   apiRoutes,
   createGenerationInputSchema,
+  demoGenerationPromptConfig,
   shotTypeSchema,
 } from "@superava/shared";
 import Fastify from "fastify";
@@ -58,6 +59,16 @@ app.get(apiRoutes.templates, async () => {
 
   return {
     items,
+  };
+});
+
+app.get(apiRoutes.generationPromptConfig, async () => {
+  const config = await prisma.appConfig.findUnique({
+    where: { id: "default" },
+  });
+
+  return {
+    basePrompt: config?.baseGenerationPrompt ?? demoGenerationPromptConfig.basePrompt,
   };
 });
 

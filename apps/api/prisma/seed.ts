@@ -1,9 +1,21 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { demoGenerationPromptConfig } from "@superava/shared";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.appConfig.upsert({
+    where: { id: "default" },
+    create: {
+      id: "default",
+      baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
+    },
+    update: {
+      baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
+    },
+  });
+
   const templates = [
     {
       slug: "vip-portrait",
