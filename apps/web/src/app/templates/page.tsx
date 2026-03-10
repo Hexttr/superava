@@ -2,11 +2,11 @@ import Link from "next/link";
 
 import { SectionCard, StatusPill } from "@superava/ui";
 import { GenerationComposer } from "@/components/generation-composer";
-import { getTemplates } from "@/lib/api";
+import { getProfile, getTemplates } from "@/lib/api";
 import { templateTextBySlug } from "@/lib/ui-text";
 
 export default async function TemplatesPage() {
-  const templates = await getTemplates();
+  const [templates, profile] = await Promise.all([getTemplates(), getProfile()]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -47,7 +47,7 @@ export default async function TemplatesPage() {
 
       <section className="mt-6">
         <SectionCard eyebrow="Создать" title="Запуск">
-          <GenerationComposer templates={templates} />
+          <GenerationComposer templates={templates} profile={profile} />
         </SectionCard>
       </section>
     </main>

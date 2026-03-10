@@ -171,7 +171,7 @@ export default async function Home() {
 
       <section className="mt-6">
         <SectionCard eyebrow="Создать" title="Новая генерация">
-          <GenerationComposer templates={templates} />
+          <GenerationComposer templates={templates} profile={profile} />
         </SectionCard>
       </section>
     </main>
