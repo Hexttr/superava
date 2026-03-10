@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Auth fields reserved for future
+  email     String?  @unique
+  name      String?
+  profiles  PhotoProfile[]
+  generations GenerationRequest[]
+}
+
+model PhotoProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  shots      ProfileShot[]
+}
+
+model ProfileShot {
+  id           String   @id @default(cuid())
+  profileId    String
+  profile      PhotoProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  shotType     String   // front_neutral | front_smile | left_45 | right_45 | left_profile | right_profile
+  storageKey   String?  // S3/MinIO key for canonical processed image
+  previewKey   String?  // S3/MinIO key for thumbnail
+  status       String   @default("missing") // missing | uploaded | approved
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([profileId, shotType])
+  @@index([profileId])
+}
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  subtitle    String
+  group       String   // vip | holiday
+  previewLabel String
+  description String
+  promptSkeleton String @default("") // Template prompt with placeholders
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model GenerationRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode        String   // free | template
+  prompt      String?
+  templateId  String?
+  status      String   @default("queued") // queued | processing | finalizing | completed | failed
+  errorMessage String?
+  jobId       String?  // pg-boss job id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  assets      GenerationAsset[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model GenerationAsset {
+  id        String   @id @default(cuid())
+  requestId String
+  request   GenerationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  storageKey String
+  mimeType  String   @default("image/png")
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  @@index([requestId])
+}

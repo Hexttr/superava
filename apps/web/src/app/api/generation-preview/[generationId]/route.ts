@@ -1,0 +1,28 @@
+import { NextRequest } from "next/server";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
+
+export async function GET(
+  _request: NextRequest,
+  context: { params: Promise<{ generationId: string }> }
+) {
+  const { generationId } = await context.params;
+  const response = await fetch(
+    `${API_URL}/api/v1/generations/${generationId}/preview`,
+    { cache: "no-store" }
+  );
+
+  if (!response.ok) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const contentType = response.headers.get("content-type") ?? "image/png";
+  const arrayBuffer = await response.arrayBuffer();
+
+  return new Response(arrayBuffer, {
+    headers: {
+      "content-type": contentType,
+      "cache-control": "public, max-age=60",
+    },
+  });
+}

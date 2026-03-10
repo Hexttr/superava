@@ -1,0 +1,16 @@
+node_modules
+.pnpm-store
+.next
+dist
+coverage
+.env
+.env.local
+.env.*.local
+!.env.example
+.DS_Store
+Thumbs.db
+apps/web/.next
+apps/web/node_modules
+apps/api/node_modules
+apps/worker/node_modules
+packages/*/node_modules
