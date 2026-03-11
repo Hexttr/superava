@@ -1,5 +1,5 @@
 import { requireAdminUser, getAdminUsers } from "@/lib/server-api";
-import { UserRoleSelect } from "./user-role-select";
+import { UserAccessControls } from "./user-role-select";
 
 export default async function AdminUsersPage() {
   const [admin, users] = await Promise.all([requireAdminUser(), getAdminUsers()]);
@@ -8,7 +8,7 @@ export default async function AdminUsersPage() {
     <div>
       <h1 className="text-2xl font-semibold text-white">Пользователи</h1>
       <p className="mt-2 text-slate-400">
-        Управление ролями доступа. Сейчас доступно повышение и понижение между `USER` и `ADMIN`.
+        Управление ролями и статусами. `BLOCKED` немедленно режет новые сессии и вход в аккаунт.
       </p>
       <div className="mt-6 space-y-3">
         {users.map((user) => (
@@ -20,11 +20,11 @@ export default async function AdminUsersPage() {
               <p className="font-medium text-white">{user.email ?? user.name ?? user.id}</p>
               <p className="mt-1 text-sm text-slate-400">
                 {user.name ? `${user.name} · ` : ""}
-                {user.emailVerified ? "email verified" : "email not verified"} · создан{" "}
+                {user.emailVerified ? "email verified" : "email not verified"} · {user.status} · создан{" "}
                 {new Date(user.createdAt).toLocaleString("ru-RU")}
               </p>
             </div>
-            <UserRoleSelect user={user} isCurrentAdmin={user.id === admin.id} />
+            <UserAccessControls user={user} isCurrentAdmin={user.id === admin.id} />
           </div>
         ))}
       </div>

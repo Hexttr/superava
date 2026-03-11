@@ -1,4 +1,11 @@
-import { adminUserSchema, userRoleSchema, type AdminUser, type UserRole } from "@superava/shared";
+import {
+  adminUserSchema,
+  userRoleSchema,
+  userStatusSchema,
+  type AdminUser,
+  type UserRole,
+  type UserStatus,
+} from "@superava/shared";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
@@ -31,7 +38,7 @@ export interface PromptPart {
   sortOrder: number;
 }
 
-export type { AdminUser, UserRole };
+export type { AdminUser, UserRole, UserStatus };
 
 async function adminFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -174,10 +181,19 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
   return (data.items ?? []).map((item) => adminUserSchema.parse(item));
 }
 
-export async function updateAdminUserRole(id: string, role: UserRole): Promise<AdminUser> {
+export async function updateAdminUserAccess(
+  id: string,
+  data: {
+    role?: UserRole;
+    status?: UserStatus;
+  }
+): Promise<AdminUser> {
   return adminFetch<AdminUser>(`/api/v1/admin/users/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ role: userRoleSchema.parse(role) }),
+    body: JSON.stringify({
+      role: data.role ? userRoleSchema.parse(data.role) : undefined,
+      status: data.status ? userStatusSchema.parse(data.status) : undefined,
+    }),
   }).then((item) => adminUserSchema.parse(item));
 }
 

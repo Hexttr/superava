@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+model User {
+  id                      String                   @id @default(cuid())
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  email                   String?                  @unique
+  name                    String?
+  avatarUrl               String?
+  passwordHash            String?
+  emailVerified           Boolean                  @default(false)
+  role                    UserRole                 @default(USER)
+  status                  UserStatus               @default(ACTIVE)
+  profiles                PhotoProfile[]
+  generations             GenerationRequest[]
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PhotoProfile {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String        @default("")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  shots       ProfileShot[]
+}
+
+model ProfileShot {
+  id         String       @id @default(cuid())
+  profileId  String
+  profile    PhotoProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  shotType   String // front_neutral | front_smile | left_45 | right_45 | left_profile | right_profile
+  storageKey String? // S3/MinIO key for canonical processed image
+  previewKey String? // S3/MinIO key for thumbnail
+  status     String       @default("missing") // missing | uploaded | approved
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@unique([profileId, shotType])
+  @@index([profileId])
+}
+
+model Category {
+  id         String           @id @default(cuid())
+  name       String
+  previewKey String?
+  sortOrder  Int              @default(0)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  templates  PromptTemplate[]
+}
+
+model PromptTemplate {
+  id             String    @id @default(cuid())
+  slug           String    @unique
+  title          String
+  subtitle       String
+  group          String // vip | holiday (legacy)
+  previewLabel   String
+  description    String
+  promptSkeleton String    @default("")
+  previewKey     String?
+  categoryId     String?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([categoryId])
+}
+
+model PromptPart {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  value     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AppConfig {
+  id                   String   @id
+  baseGenerationPrompt String
+  shortPromptMaxChars  Int      @default(80)
+  shortPromptMaxWords  Int      @default(6)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model GenerationRequest {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode              String // free | template | reference
+  prompt            String?
+  templateId        String?
+  referencePhotoKey String?
+  status            String            @default("queued") // queued | processing | finalizing | completed | failed
+  errorMessage      String?
+  jobId             String? // pg-boss job id
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  assets            GenerationAsset[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model GenerationAsset {
+  id         String            @id @default(cuid())
+  requestId  String
+  request    GenerationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  storageKey String
+  mimeType   String            @default("image/png")
+  width      Int?
+  height     Int?
+  createdAt  DateTime          @default(now())
+
+  @@index([requestId])
+}

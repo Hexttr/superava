@@ -37,7 +37,7 @@ export async function getUserFromSession(
     include: { user: true },
   });
 
-  if (!session || session.expiresAt < new Date()) {
+  if (!session || session.expiresAt < new Date() || session.user.status === "BLOCKED") {
     if (session) {
       await deleteUserSession(token);
     }
@@ -49,6 +49,8 @@ export async function getUserFromSession(
     email: session.user.email,
     name: session.user.name,
     role: session.user.role,
+    status: session.user.status,
+    emailVerified: session.user.emailVerified,
   };
 }
 

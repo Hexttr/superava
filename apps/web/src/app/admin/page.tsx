@@ -4,6 +4,7 @@ import { getAdminUsers } from "@/lib/server-api";
 export default async function AdminDashboardPage() {
   const users = await getAdminUsers();
   const adminCount = users.filter((user) => user.role === "ADMIN").length;
+  const blockedCount = users.filter((user) => user.status === "BLOCKED").length;
 
   return (
     <div>
@@ -45,7 +46,7 @@ export default async function AdminDashboardPage() {
         >
           <p className="font-medium text-white">Пользователи</p>
           <p className="mt-1 text-sm text-slate-400">
-            {users.length} всего · {adminCount} админов
+            {users.length} всего · {adminCount} админов · {blockedCount} blocked
           </p>
         </Link>
         <div className="rounded-xl border border-white/5 bg-slate-950/30 p-4 opacity-75">

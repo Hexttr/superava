@@ -5,6 +5,7 @@ import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
 import { LogoutButton } from "@/components/logout-button";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
+import { ResendVerificationButton } from "@/components/resend-verification-button";
 import {
   getCategories,
   getCurrentUser,
@@ -128,6 +129,15 @@ export default async function Home() {
               <span className="rounded-full border border-fuchsia-400/25 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold text-fuchsia-200">
                 {user?.role ?? "USER"}
               </span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  user?.emailVerified
+                    ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
+                    : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
+                }`}
+              >
+                {user?.emailVerified ? "Email verified" : "Email not verified"}
+              </span>
               {user?.role === "ADMIN" ? (
                 <Link
                   href="/admin"
@@ -137,6 +147,7 @@ export default async function Home() {
                 </Link>
               ) : null}
             </div>
+            {!user?.emailVerified ? <ResendVerificationButton /> : null}
             <div className="mt-5">
               <LogoutButton />
             </div>

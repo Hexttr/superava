@@ -21,6 +21,10 @@ Mobile-first photo generation MVP built around a reusable face profile, asynchro
 5. Seed local data with `pnpm --filter @superava/api db:seed`.
 6. Run `pnpm dev`.
 
+Optional for production auth email delivery:
+- `AUTH_PUBLIC_URL` - public web URL used in verification/reset links
+- `RESEND_API_KEY` and `MAIL_FROM` - enable real email delivery through Resend
+
 If your local database was created before Prisma migrations were added, reset it once so it can be recreated from the migration history and seed data.
 
 Recommended local recovery flow for an older dev database:
@@ -33,4 +37,5 @@ Recommended local recovery flow for an older dev database:
 - Product landing pages and feature scaffolding are in place.
 - API, database, and object storage are wired into the MVP.
 - Cookie-session auth with `USER` / `ADMIN` roles is in progress for production hardening.
+- Password reset, email verification links, and admin user controls are available in the auth layer.
 - Worker logs prepared Gemini payloads and is ready for queue integration.

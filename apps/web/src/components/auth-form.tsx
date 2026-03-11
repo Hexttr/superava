@@ -102,6 +102,16 @@ export function AuthForm({ mode }: { mode: AuthFormMode }) {
           {isLogin ? "Зарегистрироваться" : "Войти"}
         </Link>
       </p>
+      {isLogin ? (
+        <p className="mt-2 text-sm text-slate-400">
+          <Link
+            href="/forgot-password"
+            className="font-medium text-fuchsia-300 transition hover:text-fuchsia-200"
+          >
+            Забыли пароль?
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

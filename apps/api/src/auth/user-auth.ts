@@ -4,6 +4,10 @@ import { createUserSession } from "./session.js";
 
 const SALT_ROUNDS = 10;
 
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, SALT_ROUNDS);
+}
+
 export async function registerUser(
   email: string,
   password: string
@@ -23,7 +27,7 @@ export async function registerUser(
     return { ok: false, error: "email_taken" };
   }
 
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+  const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: {
@@ -31,6 +35,7 @@ export async function registerUser(
       name: trimmed.split("@")[0],
       passwordHash,
       emailVerified: false,
+      status: "ACTIVE",
     },
   });
 
@@ -52,6 +57,9 @@ export async function loginUser(
   if (!user || !user.passwordHash) {
     return { ok: false, error: "invalid_credentials" };
   }
+  if (user.status === "BLOCKED") {
+    return { ok: false, error: "account_blocked" };
+  }
 
   const match = await bcrypt.compare(password, user.passwordHash);
   if (!match) {
@@ -72,6 +80,28 @@ export async function registerAndCreateSession(
 
   const token = await createUserSession(result.userId);
   return { ok: true, token };
+}
+
+export async function resetUserPassword(
+  userId: string,
+  password: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!password || password.length < 6) {
+    return { ok: false, error: "password_too_short" };
+  }
+
+  const passwordHash = await hashPassword(password);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    }),
+    prisma.session.deleteMany({
+      where: { userId },
+    }),
+  ]);
+
+  return { ok: true };
 }
 
 export async function loginAndCreateSession(

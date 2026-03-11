@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
@@ -13,6 +11,7 @@ import {
   demoGenerationPromptConfig,
   shotTypeSchema,
   userRoleSchema,
+  userStatusSchema,
 } from "@superava/shared";
 import Fastify, { type FastifyRequest } from "fastify";
 import { prisma } from "./db.js";
@@ -34,28 +33,41 @@ import {
 } from "./storage.js";
 import {
   deleteUserSession,
+  createUserSession,
   getUserFromSession,
   SESSION_COOKIE,
 } from "./auth/session.js";
 import {
   registerAndCreateSession,
   loginAndCreateSession,
+  resetUserPassword,
 } from "./auth/user-auth.js";
-
-const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:3000";
-const SESSION_SECRET = process.env.SESSION_SECRET ?? "dev-secret-change-in-prod";
-const isProduction = process.env.NODE_ENV === "production";
-const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+import {
+  checkAuthRateLimit,
+  clearAuthRateLimit,
+  recordAuthFailure,
+} from "./auth/rate-limit.js";
+import { appConfig } from "./config.js";
+import {
+  createEmailVerificationToken,
+  createPasswordResetToken,
+  consumePasswordResetToken,
+  verifyEmailToken,
+} from "./auth/token-service.js";
+import {
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "./auth/email.js";
 
 const app = Fastify({
   logger: true,
 });
 
 await app.register(cookie, {
-  secret: SESSION_SECRET,
+  secret: appConfig.sessionSecret,
 });
 await app.register(cors, {
-  origin: WEB_ORIGIN,
+  origin: appConfig.webOrigin,
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
 });
@@ -70,33 +82,71 @@ const sessionCookieOptions = {
   path: "/",
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: isProduction,
-  maxAge: SESSION_MAX_AGE,
+  secure: appConfig.isProduction,
+  maxAge: appConfig.sessionMaxAgeSeconds,
 };
 
 // --- User Auth ---
 app.post("/api/v1/auth/register", async (request, reply) => {
   const body = request.body as { email?: string; password?: string };
+  const rateLimit = checkAuthRateLimit("register", request, body?.email);
+  if (!rateLimit.ok) {
+    return reply.status(429).send({
+      error: "too_many_attempts",
+      retryAfter: rateLimit.retryAfter,
+    });
+  }
   if (!body?.email || !body?.password) {
+    recordAuthFailure("register", request, body?.email);
     return reply.status(400).send({ error: "email_and_password_required" });
   }
   const result = await registerAndCreateSession(body.email, body.password);
   if (!result.ok) {
+    recordAuthFailure("register", request, body.email);
     return reply.status(400).send({ error: result.error });
   }
+  clearAuthRateLimit("register", request, body.email);
   reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
-  return reply.send({ ok: true });
+
+  let debugVerifyUrl: string | undefined;
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email: body.email.trim().toLowerCase() },
+      select: { id: true, email: true },
+    });
+    if (user?.email) {
+      const token = await createEmailVerificationToken(user.id);
+      const sent = await sendVerificationEmail(user.email, token);
+      debugVerifyUrl = sent.debugUrl;
+    }
+  } catch (error) {
+    request.log.error(error);
+  }
+
+  return reply.send({ ok: true, debugVerifyUrl });
 });
 
 app.post("/api/v1/auth/login", async (request, reply) => {
   const body = request.body as { email?: string; password?: string };
+  const rateLimit = checkAuthRateLimit("login", request, body?.email);
+  if (!rateLimit.ok) {
+    return reply.status(429).send({
+      error: "too_many_attempts",
+      retryAfter: rateLimit.retryAfter,
+    });
+  }
   if (!body?.email || !body?.password) {
+    recordAuthFailure("login", request, body?.email);
     return reply.status(400).send({ error: "email_and_password_required" });
   }
   const result = await loginAndCreateSession(body.email, body.password);
   if (!result.ok) {
-    return reply.status(401).send({ error: result.error });
+    recordAuthFailure("login", request, body.email);
+    return reply
+      .status(result.error === "account_blocked" ? 403 : 401)
+      .send({ error: result.error });
   }
+  clearAuthRateLimit("login", request, body.email);
   reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
   return reply.send({ ok: true });
 });
@@ -108,6 +158,90 @@ app.post("/api/v1/auth/logout", async (request, reply) => {
   }
   reply.clearCookie(SESSION_COOKIE, { path: "/" });
   return reply.send({ ok: true });
+});
+
+app.post("/api/v1/auth/forgot-password", async (request, reply) => {
+  const body = request.body as { email?: string };
+  const email = body?.email?.trim().toLowerCase();
+  if (!email) {
+    return reply.status(400).send({ error: "email_required" });
+  }
+
+  let debugResetUrl: string | undefined;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, status: true },
+    });
+
+    if (user?.email && user.status === "ACTIVE") {
+      const token = await createPasswordResetToken(user.id);
+      const sent = await sendPasswordResetEmail(user.email, token);
+      debugResetUrl = sent.debugUrl;
+    }
+  } catch (error) {
+    request.log.error(error);
+  }
+
+  return reply.send({ ok: true, debugResetUrl });
+});
+
+app.post("/api/v1/auth/reset-password", async (request, reply) => {
+  const body = request.body as { token?: string; password?: string };
+  if (!body?.token || !body?.password) {
+    return reply.status(400).send({ error: "token_and_password_required" });
+  }
+
+  const consumed = await consumePasswordResetToken(body.token);
+  if (!consumed.ok) {
+    return reply
+      .status(consumed.error === "account_blocked" ? 403 : 400)
+      .send({ error: consumed.error });
+  }
+
+  const reset = await resetUserPassword(consumed.userId, body.password);
+  if (!reset.ok) {
+    return reply.status(400).send({ error: reset.error });
+  }
+
+  const token = await createUserSession(consumed.userId);
+  reply.setCookie(SESSION_COOKIE, token, sessionCookieOptions);
+  return reply.send({ ok: true });
+});
+
+app.post("/api/v1/auth/verify-email", async (request, reply) => {
+  const body = request.body as { token?: string };
+  if (!body?.token) {
+    return reply.status(400).send({ error: "token_required" });
+  }
+
+  const result = await verifyEmailToken(body.token);
+  if (!result.ok) {
+    return reply.status(400).send({ error: result.error });
+  }
+
+  return reply.send({ ok: true });
+});
+
+app.post("/api/v1/auth/resend-verification", async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) return;
+  if (!user.email) {
+    return reply.status(400).send({ error: "email_required" });
+  }
+  if (user.emailVerified) {
+    return reply.status(400).send({ error: "already_verified" });
+  }
+
+  try {
+    const token = await createEmailVerificationToken(user.id);
+    const sent = await sendVerificationEmail(user.email, token);
+    return reply.send({ ok: true, debugVerifyUrl: sent.debugUrl });
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({ error: "verification_email_send_failed" });
+  }
 });
 
 app.get("/api/v1/auth/me", async (request, reply) => {
@@ -498,6 +632,7 @@ app.get("/api/v1/admin/users", async (request, reply) => {
       email: true,
       name: true,
       role: true,
+      status: true,
       emailVerified: true,
       createdAt: true,
     },
@@ -525,22 +660,35 @@ app.patch("/api/v1/admin/users/:id", async (request, reply) => {
 
   const body = request.body as { role?: string };
   const parsedRole = userRoleSchema.safeParse(body?.role);
-  if (!parsedRole.success) {
-    return reply.status(400).send({ error: "invalid_role" });
+  const parsedStatus = userStatusSchema.safeParse((request.body as { status?: string })?.status);
+  if (!parsedRole.success && !parsedStatus.success) {
+    return reply.status(400).send({ error: "invalid_role_or_status" });
   }
 
-  if (admin.id === id && parsedRole.data !== "ADMIN") {
+  if (admin.id === id && parsedRole.success && parsedRole.data !== "ADMIN") {
     return reply.status(400).send({ error: "cannot_demote_self" });
+  }
+  if (admin.id === id && parsedStatus.success && parsedStatus.data !== "ACTIVE") {
+    return reply.status(400).send({ error: "cannot_block_self" });
+  }
+
+  const data: { role?: "USER" | "ADMIN"; status?: "ACTIVE" | "BLOCKED" } = {};
+  if (parsedRole.success) {
+    data.role = parsedRole.data;
+  }
+  if (parsedStatus.success) {
+    data.status = parsedStatus.data;
   }
 
   const updated = await prisma.user.update({
     where: { id },
-    data: { role: parsedRole.data },
+    data,
     select: {
       id: true,
       email: true,
       name: true,
       role: true,
+      status: true,
       emailVerified: true,
       createdAt: true,
     },
@@ -667,8 +815,8 @@ app.get("/api/v1/profile/shots/:shotType/preview", async (request, reply) => {
   return reply.send(buffer);
 });
 
-const port = Number(process.env.API_PORT ?? 4000);
-const host = process.env.API_HOST ?? "0.0.0.0";
+const port = appConfig.apiPort;
+const host = appConfig.apiHost;
 
 try {
   await prisma.$connect();

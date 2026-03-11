@@ -1,7 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcrypt";
-import { PrismaClient } from "@prisma/client";
 import { demoGenerationPromptConfig } from "@superava/shared";
+import { PrismaClient } from "../src/generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 const DEFAULT_DEV_PASSWORD = "devpass123";
@@ -154,11 +154,13 @@ async function main() {
       email: "dev@superava.local",
       name: "Dev User",
       role: "ADMIN",
+      status: "ACTIVE",
       passwordHash: devPasswordHash,
       emailVerified: true,
     },
     update: {
       role: "ADMIN",
+      status: "ACTIVE",
       passwordHash: devPasswordHash,
       emailVerified: true,
     },
@@ -174,11 +176,13 @@ async function main() {
         email: adminEmail,
         name: "Admin",
         role: "ADMIN",
+        status: "ACTIVE",
         passwordHash: adminPasswordHash,
         emailVerified: true,
       },
       update: {
         role: "ADMIN",
+        status: "ACTIVE",
         passwordHash: adminPasswordHash,
         emailVerified: true,
       },

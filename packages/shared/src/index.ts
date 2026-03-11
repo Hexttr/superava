@@ -29,17 +29,21 @@ export type TemplateGroup = z.infer<typeof templateGroupSchema>;
 export const userRoleSchema = z.enum(["USER", "ADMIN"]);
 export type UserRole = z.infer<typeof userRoleSchema>;
 
+export const userStatusSchema = z.enum(["ACTIVE", "BLOCKED"]);
+export type UserStatus = z.infer<typeof userStatusSchema>;
+
 export const authUserSchema = z.object({
   id: z.string(),
   email: z.string().nullable(),
   name: z.string().nullable(),
   role: userRoleSchema,
+  status: userStatusSchema,
+  emailVerified: z.boolean(),
 });
 
 export type AuthUser = z.infer<typeof authUserSchema>;
 
 export const adminUserSchema = authUserSchema.extend({
-  emailVerified: z.boolean(),
   createdAt: z.string(),
 });
 
