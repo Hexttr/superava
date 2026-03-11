@@ -28,6 +28,7 @@ export function GenerationComposer(props: {
   generationPromptConfig: GenerationPromptConfig;
   promptConstructor?: PromptConstructorConfig;
   showTemplates?: boolean;
+  mode?: "prompt" | "reference" | "full";
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -36,16 +37,23 @@ export function GenerationComposer(props: {
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  const isPromptOnly = props.mode === "prompt";
+  const isReferenceOnly = props.mode === "reference";
+
   function submitFreePrompt() {
     const trimmed = prompt.trim();
     const hasReference = Boolean(referencePhoto);
 
-    if (!hasReference && !trimmed) {
-      setMessage("Введите запрос или прикрепите фото.");
+    if (!isReferenceOnly && !hasReference && !trimmed) {
+      setMessage("Введите запрос.");
       return;
     }
 
-    if (hasReference) {
+    if ((!isPromptOnly && hasReference) || isReferenceOnly) {
+      if (!referencePhoto) {
+        setMessage("Прикрепите фото.");
+        return;
+      }
       submitReferencePhoto();
       return;
     }
@@ -289,7 +297,7 @@ export function GenerationComposer(props: {
   return (
     <div className="space-y-4">
       {message ? (
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+        <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-4 py-3 text-sm text-fuchsia-100">
           {message}
         </div>
       ) : null}
@@ -297,9 +305,13 @@ export function GenerationComposer(props: {
       <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-base font-semibold text-white">Опишите кадр</p>
+            <p className="text-base font-semibold text-white">
+              {isReferenceOnly ? "Загрузите кадр" : "Опишите кадр"}
+            </p>
             <p className="mt-1 text-sm text-slate-400">
-              Лицо возьмем из вашего профиля, а сцену соберем по описанию.
+              {isReferenceOnly
+                ? "На фото — 1 человек. Мы проанализируем сцену и вставим вас."
+                : "Лицо возьмем из профиля, сцену соберём по описанию."}
             </p>
           </div>
           <StatusPill
@@ -307,53 +319,55 @@ export function GenerationComposer(props: {
             tone="accent"
           />
         </div>
-        <textarea
-          value={prompt}
-          onChange={(event) => setPrompt(event.currentTarget.value)}
-          placeholder={
-            referencePhoto
-              ? "Опционально: что ещё изменить в композиции?"
-              : "Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
-          }
-          className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
-        />
-        <div className="mt-4">
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
-            <span>Или прикрепите фото</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setReferencePhoto(e.target.files?.[0] ?? null)}
-              className="file:rounded-lg file:border-0 file:bg-cyan-500/20 file:px-3 file:py-1.5 file:text-cyan-300 file:transition file:hover:bg-cyan-500/30"
-            />
-          </label>
-          {referencePhoto && (
-            <div className="mt-2 flex items-center gap-3">
-              <img
-                src={URL.createObjectURL(referencePhoto)}
-                alt=""
-                className="h-20 w-20 rounded-lg object-cover"
+        {!isReferenceOnly && (
+          <textarea
+            value={prompt}
+            onChange={(event) => setPrompt(event.currentTarget.value)}
+            placeholder="Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
+            className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
+          />
+        )}
+        {(isReferenceOnly || !isPromptOnly) && (
+          <div className="mt-4">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
+              <span>{isReferenceOnly ? "Выберите фото" : "Или прикрепите фото"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setReferencePhoto(e.target.files?.[0] ?? null)}
+                className="file:rounded-lg file:border-0 file:bg-fuchsia-500/20 file:px-3 file:py-1.5 file:text-fuchsia-300 file:transition file:hover:bg-fuchsia-500/30"
               />
-              <span className="text-sm text-slate-400">{referencePhoto.name}</span>
-              <button
-                type="button"
-                onClick={() => setReferencePhoto(null)}
-                className="text-sm text-red-400 hover:text-red-300"
-              >
-                Убрать
-              </button>
-            </div>
-          )}
-          <p className="mt-1 text-xs text-slate-500">
-            На фото должен быть 1 человек. Мы проанализируем сцену и вставим вас в неё.
-          </p>
-        </div>
+            </label>
+            {referencePhoto && (
+              <div className="mt-2 flex items-center gap-3">
+                <img
+                  src={URL.createObjectURL(referencePhoto)}
+                  alt=""
+                  className="h-20 w-20 rounded-lg object-cover"
+                />
+                <span className="text-sm text-slate-400">{referencePhoto.name}</span>
+                <button
+                  type="button"
+                  onClick={() => setReferencePhoto(null)}
+                  className="text-sm text-rose-400 hover:text-rose-300"
+                >
+                  Убрать
+                </button>
+              </div>
+            )}
+            {!isReferenceOnly && (
+              <p className="mt-1 text-xs text-slate-500">
+                На фото должен быть 1 человек. Мы проанализируем сцену и вставим вас в неё.
+              </p>
+            )}
+          </div>
+        )}
         <label className="mt-4 flex cursor-pointer items-center gap-3">
           <input
             type="checkbox"
             checked={enhancePortrait}
             onChange={(e) => setEnhancePortrait(e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400/40"
+            className="h-4 w-4 rounded border-white/20 bg-white/5 text-fuchsia-400 focus:ring-fuchsia-400/40"
           />
           <span className="text-sm text-slate-300">
             Улучшить портрет — смягчить кожу, добавить живость взгляду, осветлить кадр
@@ -363,14 +377,14 @@ export function GenerationComposer(props: {
           <button
             type="button"
             onClick={submitFreePrompt}
-            disabled={isPending}
-            className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={isPending || (isReferenceOnly && !referencePhoto)}
+            className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-70"
           >
             Сгенерировать
           </button>
           <Link
             href="/generations"
-            className="text-sm font-medium text-cyan-300 transition hover:text-cyan-200"
+            className="text-sm font-medium text-fuchsia-300 transition hover:text-fuchsia-200"
           >
             Мои генерации
           </Link>
@@ -402,7 +416,7 @@ export function GenerationComposer(props: {
                   type="button"
                   disabled={isPending}
                   onClick={() => submitTemplate(template)}
-                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="inline-flex items-center justify-center rounded-full border border-fuchsia-400/30 px-4 py-2 text-sm font-semibold text-fuchsia-200 transition hover:bg-fuchsia-500/20 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   Выбрать
                 </button>

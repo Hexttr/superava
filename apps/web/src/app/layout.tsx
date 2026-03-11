@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Superava",
+  title: "newava.pro",
   description: "Создание фото с персональным профилем лица.",
 };
 
@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="ru">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} bg-[radial-gradient(circle_at_top,#1e293b,#020617_55%)] antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-[radial-gradient(ellipse_at_top,rgba(147,51,234,0.15),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.08),transparent_40%),#0f0a1a] antialiased`}
       >
         {children}
       </body>

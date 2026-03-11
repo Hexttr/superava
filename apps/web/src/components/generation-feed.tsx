@@ -29,21 +29,16 @@ export function GenerationFeed(props: {
 }) {
   const router = useRouter();
   const [browserGenerations, setBrowserGenerations] = useState<BrowserGenerationRecord[]>([]);
-  const items = useMemo(
-    () =>
-      typeof props.maxItems === "number"
-        ? [...browserGenerations, ...props.generations]
-            .sort(
-              (left, right) =>
-                new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-            )
-            .slice(0, props.maxItems)
-        : [...browserGenerations, ...props.generations].sort(
-            (left, right) =>
-              new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-          ),
-    [browserGenerations, props.generations, props.maxItems]
-  );
+  const items = useMemo(() => {
+    const combined = [...browserGenerations, ...props.generations].filter(
+      (g) => g.status !== "failed"
+    );
+    const sorted = combined.sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    );
+    return typeof props.maxItems === "number" ? sorted.slice(0, props.maxItems) : sorted;
+  }, [browserGenerations, props.generations, props.maxItems]);
   const hasActiveGenerations = items.some((generation) =>
     ["queued", "processing", "finalizing"].includes(generation.status)
   );

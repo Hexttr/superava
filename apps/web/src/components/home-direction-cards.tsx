@@ -14,9 +14,9 @@ import type {
 type Direction = "prompt" | "gallery" | "reference" | null;
 
 const DIRECTION_IMAGES = {
-  prompt: "/images/direction-prompt.jpg",
-  gallery: "/images/direction-gallery.jpg",
-  reference: "/images/direction-reference.jpg",
+  prompt: "/images/direction-prompt.png",
+  gallery: "/images/direction-gallery.png",
+  reference: "/images/direction-reference.png",
 };
 
 export function HomeDirectionCards(props: {

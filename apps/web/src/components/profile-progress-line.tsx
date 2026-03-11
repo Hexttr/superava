@@ -23,7 +23,7 @@ export function ProfileProgressLine(props: { profile: PhotoProfile }) {
             <div
               className={`relative overflow-hidden rounded-[1.4rem] border ${
                 ready
-                  ? "border-cyan-300/60 bg-cyan-300/8 ring-2 ring-cyan-300/15"
+                  ? "border-fuchsia-300/60 bg-fuchsia-300/8 ring-2 ring-fuchsia-300/15"
                   : "border-white/10 bg-white/5"
               }`}
             >
@@ -44,7 +44,7 @@ export function ProfileProgressLine(props: { profile: PhotoProfile }) {
                 </span>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    ready ? "bg-cyan-300" : "bg-white/25"
+                    ready ? "bg-fuchsia-300" : "bg-white/25"
                   }`}
                 />
               </div>

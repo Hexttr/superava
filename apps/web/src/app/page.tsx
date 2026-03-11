@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
-import { SectionCard, StatusPill } from "@superava/ui";
+import { SectionCard } from "@superava/ui";
 import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
@@ -13,6 +13,48 @@ import {
   getProfile,
   getTemplates,
 } from "@/lib/api";
+
+function LogoIcon() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="shrink-0 text-white"
+      aria-hidden
+    >
+      <rect
+        x="2"
+        y="2"
+        width="20"
+        height="20"
+        rx="4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="12"
+        cy="10"
+        r="4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5 20c2-3 5-4 7-4s5 1 7 4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 const CATEGORY_IMAGES: Record<string, string> = {
   "8 марта": "/images/category-8marta.jpg",
@@ -39,9 +81,11 @@ export default async function Home() {
       {/* Hero */}
       <section className="rounded-[2.25rem] border border-white/10 bg-white/5 p-6 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8 lg:p-10">
         <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-3">
-            <StatusPill label="Superava" tone="accent" />
-            <StatusPill label="Для тебя" tone="neutral" />
+          <div className="flex items-center gap-2.5">
+            <LogoIcon />
+            <span className="text-xl font-semibold tracking-tight text-fuchsia-300">
+              newava.pro
+            </span>
           </div>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
             Один профиль лица.
@@ -50,14 +94,20 @@ export default async function Home() {
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
             Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
-            Superava превратит это в фотоконтент, который выглядит цельно и персонально.
+            newava.pro превратит это в фотоконтент, который выглядит цельно и персонально.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/onboarding"
               className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
             >
               Собрать профиль
+            </Link>
+            <Link
+              href="/templates"
+              className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90"
+            >
+              Готовые сцены
             </Link>
           </div>
         </div>
@@ -94,7 +144,7 @@ export default async function Home() {
 
       {/* 3 direction cards + forms */}
       <section className="mt-6">
-        <SectionCard eyebrow="Создать" title="Выберите способ">
+        <SectionCard title="Выберите способ">
           <HomeDirectionCards
             profile={profile}
             templates={templates}
@@ -106,7 +156,7 @@ export default async function Home() {
 
       {/* My generations */}
       <section className="mt-6">
-        <SectionCard eyebrow="Галерея" title="Мои генерации">
+        <SectionCard title="Мои изображения" large>
           <GenerationGallery
             generations={generations}
             maxItems={8}
@@ -115,9 +165,9 @@ export default async function Home() {
           <div className="mt-5">
             <Link
               href="/generations"
-              className="text-sm font-medium text-fuchsia-300 transition hover:text-fuchsia-200"
+              className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
             >
-              Вся история
+              Все изображения
             </Link>
           </div>
         </SectionCard>
@@ -125,7 +175,7 @@ export default async function Home() {
 
       {/* Categories */}
       <section className="mt-6">
-        <SectionCard eyebrow="Подборки" title="Праздничные сцены">
+        <SectionCard title="Каталог сцен" large>
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
             {categories.map((category) => {
               const imageSrc = CATEGORY_IMAGES[category.name];
@@ -154,7 +204,7 @@ export default async function Home() {
                       {category.name}
                     </p>
                     <p className="mt-2 text-xs font-medium uppercase tracking-[0.22em] text-fuchsia-200/90">
-                      Открыть сцену
+                      Открыть подборку
                     </p>
                   </div>
                 </Link>
