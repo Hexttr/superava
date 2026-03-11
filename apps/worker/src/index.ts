@@ -14,8 +14,8 @@ import { ensureBucket, generationAssetKey, getObject, putObject } from "./storag
 
 const provider = new GeminiProviderAdapter();
 const connectionString = process.env.DATABASE_URL;
-const imageModel = process.env.GEMINI_IMAGE_MODEL?.trim() || "gemini-2.5-flash-image";
-const maxRefImages = imageModel.includes("gemini-3") ? 14 : 3;
+const imageModel = process.env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image";
+const maxRefImages = 14;
 const geminiApiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 const proxyUrl =
   process.env.HTTPS_PROXY ??
