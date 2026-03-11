@@ -141,6 +141,22 @@ export async function uploadProfileShot(
   return photoProfileSchema.parse(json.profile);
 }
 
+export async function uploadReferencePhoto(
+  file: File
+): Promise<{ storageKey: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_URL}/api/v1/reference-photos`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = (await response.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? "upload_failed");
+  }
+  return response.json();
+}
+
 export async function createGenerationRequest(
   input: CreateGenerationInput
 ): Promise<{ accepted: boolean; jobId: string; requestId: string }> {

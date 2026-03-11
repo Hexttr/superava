@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import {
@@ -24,6 +25,7 @@ import {
   ensureBucket,
   getObject,
   putObject,
+  referencePhotoKey,
   templatePreviewKey,
 } from "./storage.js";
 
@@ -33,6 +35,7 @@ const app = Fastify({
 
 await app.register(cors, {
   origin: true,
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
 });
 await app.register(multipart, {
   limits: {
@@ -351,6 +354,18 @@ app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
     data,
   });
   return reply.send(updated);
+});
+
+app.post("/api/v1/reference-photos", async (request, reply) => {
+  const file = await request.file();
+  if (!file) return reply.status(400).send({ error: "missing_file" });
+  const buffer = await file.toBuffer();
+  const validation = await validateImage(buffer);
+  if (!validation.ok) return reply.status(400).send({ error: validation.error ?? "invalid_image" });
+  const uniqueId = randomUUID();
+  const key = referencePhotoKey(uniqueId);
+  await putObject(key, buffer, "image/jpeg");
+  return reply.status(201).send({ storageKey: key });
 });
 
 app.post(apiRoutes.generations, async (request, reply) => {

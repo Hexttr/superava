@@ -91,12 +91,13 @@ model AppConfig {
 }
 
 model GenerationRequest {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mode        String   // free | template
-  prompt      String?
-  templateId  String?
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode             String   // free | template | reference
+  prompt           String?
+  templateId       String?
+  referencePhotoKey String?
   status      String   @default("queued") // queued | processing | finalizing | completed | failed
   errorMessage String?
   jobId       String?  // pg-boss job id

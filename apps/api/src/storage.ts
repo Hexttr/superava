@@ -104,3 +104,7 @@ export function categoryPreviewKey(categoryId: string): string {
 export function templatePreviewKey(templateId: string): string {
   return `admin/templates/${templateId}/preview.jpg`;
 }
+
+export function referencePhotoKey(uniqueId: string): string {
+  return `reference-photos/${uniqueId}.jpg`;
+}

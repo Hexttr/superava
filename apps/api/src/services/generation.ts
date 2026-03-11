@@ -23,12 +23,17 @@ export async function createGeneration(
     }
   }
 
+  if (input.mode === "reference" && !input.referencePhotoKey) {
+    throw new Error("reference_photo_required");
+  }
+
   const request = await prisma.generationRequest.create({
     data: {
       userId,
       mode: input.mode,
       prompt: input.prompt ?? null,
       templateId: input.templateId ?? null,
+      referencePhotoKey: input.referencePhotoKey ?? null,
       status: "queued",
     },
   });
@@ -39,6 +44,7 @@ export async function createGeneration(
     mode: input.mode,
     prompt: input.prompt,
     templateId: input.templateId,
+    referencePhotoKey: input.referencePhotoKey,
     enhancePortrait: input.enhancePortrait ?? false,
   });
 
@@ -82,11 +88,15 @@ export async function listGenerations(userId: string): Promise<GenerationRecord[
 
   return requests.map((r) => ({
     id: r.id,
-    mode: r.mode as "free" | "template",
+    mode: r.mode as "free" | "template" | "reference",
     status: r.status as GenerationRecord["status"],
     title:
       r.prompt ??
-      (r.templateId ? templatesById.get(r.templateId)?.title ?? "Шаблон" : "Свободный запрос"),
+      (r.mode === "reference"
+        ? "По фото"
+        : r.templateId
+          ? templatesById.get(r.templateId)?.title ?? "Шаблон"
+          : "Свободный запрос"),
     subtitle: statusSubtitle(r.status, r.errorMessage),
     createdAt: r.createdAt.toISOString(),
     previewUrl: r.assets[0] ? `/api/v1/generations/${r.id}/preview` : undefined,

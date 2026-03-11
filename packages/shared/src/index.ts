@@ -11,7 +11,7 @@ export const shotTypeSchema = z.enum([
 
 export type ShotType = z.infer<typeof shotTypeSchema>;
 
-export const generationModeSchema = z.enum(["free", "template"]);
+export const generationModeSchema = z.enum(["free", "template", "reference"]);
 export type GenerationMode = z.infer<typeof generationModeSchema>;
 
 export const generationStatusSchema = z.enum([
@@ -196,6 +196,60 @@ export function buildGenerationPrompt(args: {
   return promptParts.join(" ");
 }
 
+const REFERENCE_SCENE_PREFIX =
+  "Create a photo that exactly matches this scene description. The subject's face must match the provided reference photos. ";
+
+export function buildReferenceModePrompt(args: {
+  sceneDescription: string;
+  userComment?: string;
+  profile: PhotoProfile;
+  enhancePortrait: boolean;
+  promptConstructor?: PromptConstructorConfig;
+}) {
+  const partsMap = args.promptConstructor
+    ? new Map(args.promptConstructor.parts.map((p) => [p.key, p.value]))
+    : null;
+
+  const base =
+    partsMap?.get("base") ?? DEFAULT_GENERATION_BASE_PROMPT;
+
+  const count = args.profile.shots.filter((shot) => shot.status !== "missing").length;
+  const percent = args.profile.completionPercent;
+  const profileMetaTemplate =
+    partsMap?.get("profile_meta") ??
+    `Reference photos cover ${count} face angles. Profile completeness: ${percent}%.`;
+  const profileMeta = profileMetaTemplate
+    .replace(/\{count\}/g, String(count))
+    .replace(/\{percent\}/g, String(percent));
+
+  const hasSmileShot = args.profile.shots.some(
+    (s) => s.type === "front_smile" && s.status !== "missing"
+  );
+  const closedMouthRule = !hasSmileShot
+    ? (partsMap?.get("closed_mouth") ?? "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile.")
+    : undefined;
+
+  const scenePart = `${REFERENCE_SCENE_PREFIX}Scene: ${args.sceneDescription}.`;
+  const userCommentPart = args.userComment?.trim()
+    ? `Additional modification requested: ${args.userComment}.`
+    : undefined;
+
+  const enhancePortrait = args.enhancePortrait
+    ? (partsMap?.get("enhance_portrait") ?? ENHANCE_PORTRAIT_PROMPT)
+    : undefined;
+
+  const promptParts = [
+    base,
+    profileMeta,
+    closedMouthRule,
+    scenePart,
+    userCommentPart,
+    enhancePortrait,
+  ].filter(Boolean);
+
+  return promptParts.join(" ");
+}
+
 export const generationRecordSchema = z.object({
   id: z.string(),
   mode: generationModeSchema,
@@ -212,6 +266,7 @@ export const createGenerationInputSchema = z.object({
   mode: generationModeSchema,
   prompt: z.string().min(1).max(1200).optional(),
   templateId: z.string().optional(),
+  referencePhotoKey: z.string().optional(),
   enhancePortrait: z.boolean().optional(),
 });
 

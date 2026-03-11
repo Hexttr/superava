@@ -3,6 +3,7 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: [".env", "../../.env"] });
 // Watcher reload marker for local env changes.
 
+import { buildReferenceModePrompt } from "@superava/shared";
 import { DEFAULT_GENERATION_BASE_PROMPT, GeminiProviderAdapter } from "@superava/ai-provider";
 import { randomUUID } from "node:crypto";
 import PgBoss from "pg-boss";
@@ -73,6 +74,67 @@ async function buildReferenceParts(
       };
     })
   );
+}
+
+const SCENE_ANALYSIS_PROMPT = `Analyze this photo in extreme detail for a photographer's brief. Describe everything needed to recreate this exact scene:
+- Lighting: direction, quality, color temperature, shadows, highlights
+- Composition: framing, depth, foreground/background
+- Person: pose, body position, clothing (fabric, color, style), accessories
+- Environment: location, background elements, props, textures
+- Mood and atmosphere
+Output a single detailed paragraph in English. Describe the scene as if briefing a photographer to shoot an identical frame. Do not describe the person's face in detail—focus on the scene, pose, clothing, and setting.`;
+
+async function analyzeSceneFromImage(args: {
+  imageBuffer: Buffer;
+  model: string;
+}): Promise<string> {
+  const apiKey = ensureGeminiApiKey();
+  const imageBase64 = args.imageBuffer.toString("base64");
+  const response = await undiciFetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${args.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      dispatcher: proxyDispatcher,
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: SCENE_ANALYSIS_PROMPT },
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: imageBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseModalities: ["TEXT"],
+        },
+      }),
+    }
+  );
+  const rawText = await response.text();
+  const parsed = rawText ? tryParseJson(rawText) : null;
+
+  if (!response.ok) {
+    const err = parsed && typeof parsed === "object" && "error" in parsed
+      ? (parsed as { error?: { message?: string } }).error?.message
+      : undefined;
+    throw new Error(err ?? `scene_analysis_failed_${response.status}`);
+  }
+
+  const candidates = parsed && typeof parsed === "object" && "candidates" in parsed
+    ? (parsed as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates
+    : undefined;
+  const text = candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text || typeof text !== "string") {
+    throw new Error("scene_analysis_no_text");
+  }
+  return text.trim();
 }
 
 function extractGeneratedImage(response: any) {
@@ -163,12 +225,91 @@ function tryParseJson(value: string) {
   }
 }
 
+async function runReferenceJob(
+  payload: {
+    requestId: string;
+    userId: string;
+    referencePhotoKey: string;
+    prompt?: string;
+    enhancePortrait?: boolean;
+  },
+  profile: { id: string; displayName: string; shots: Array<{ storageKey: string | null; shotType: string; status: string }> }
+) {
+  const refBuffer = await getObject(payload.referencePhotoKey);
+
+  const sceneDescription = await analyzeSceneFromImage({
+    imageBuffer: refBuffer,
+    model: "gemini-2.0-flash",
+  });
+
+  const [promptParts, appConfig] = await Promise.all([
+    prisma.promptPart.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.appConfig.findUnique({ where: { id: "default" } }),
+  ]);
+  const promptConstructor =
+    promptParts.length > 0
+      ? {
+          parts: promptParts.map((p: { key: string; value: string }) => ({ key: p.key, value: p.value })),
+          shortPromptMaxChars: appConfig?.shortPromptMaxChars ?? 80,
+          shortPromptMaxWords: appConfig?.shortPromptMaxWords ?? 6,
+        }
+      : undefined;
+
+  const prompt = buildReferenceModePrompt({
+    sceneDescription,
+    userComment: payload.prompt?.trim(),
+    profile: {
+      id: profile.id,
+      displayName: profile.displayName,
+      completionPercent: Math.round((profile.shots.length / 6) * 100),
+      shots: profile.shots.map((s: { shotType: string; status: string }) => ({
+        id: "",
+        type: s.shotType as "front_neutral" | "front_smile" | "left_45" | "right_45" | "left_profile" | "right_profile",
+        status: s.status as "missing" | "uploaded" | "approved",
+        guidance: "",
+        exampleAngle: "",
+      })),
+    },
+    enhancePortrait: payload.enhancePortrait ?? false,
+    promptConstructor,
+  });
+
+  const generated = await renderGenerationImage({
+    model: "gemini-2.5-flash-image",
+    prompt,
+    shots: profile.shots.map((s: { storageKey: string | null }) => ({ storageKey: s.storageKey })),
+  });
+
+  await prisma.generationRequest.update({
+    where: { id: payload.requestId },
+    data: { status: "finalizing" },
+  });
+
+  const asset = await prisma.generationAsset.create({
+    data: {
+      requestId: payload.requestId,
+      storageKey: generationAssetKey(payload.requestId, randomUUID()),
+      mimeType: generated.mimeType,
+      width: generated.width,
+      height: generated.height,
+    },
+  });
+
+  await putObject(asset.storageKey, generated.image, asset.mimeType);
+
+  await prisma.generationRequest.update({
+    where: { id: payload.requestId },
+    data: { status: "completed" },
+  });
+}
+
 async function runJob(payload: {
   requestId: string;
   userId: string;
-  mode: "free" | "template";
+  mode: "free" | "template" | "reference";
   prompt?: string;
   templateId?: string;
+  referencePhotoKey?: string;
   enhancePortrait?: boolean;
 }) {
   await prisma.generationRequest.update({
@@ -188,6 +329,21 @@ async function runJob(payload: {
   const template = payload.templateId
     ? await prisma.promptTemplate.findUnique({ where: { id: payload.templateId } })
     : null;
+
+  if (payload.mode === "reference" && payload.referencePhotoKey) {
+    await runReferenceJob(
+      {
+        requestId: payload.requestId,
+        userId: payload.userId,
+        referencePhotoKey: payload.referencePhotoKey,
+        prompt: payload.prompt,
+        enhancePortrait: payload.enhancePortrait,
+      },
+      profile
+    );
+    return;
+  }
+
   const [promptParts, appConfig] = await Promise.all([
     prisma.promptPart.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.appConfig.findUnique({ where: { id: "default" } }),

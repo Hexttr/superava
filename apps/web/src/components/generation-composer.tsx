@@ -13,7 +13,7 @@ import {
   type PromptTemplate,
 } from "@superava/shared";
 import { StatusPill } from "@superava/ui";
-import { createGenerationRequest } from "@/lib/api";
+import { createGenerationRequest, uploadReferencePhoto } from "@/lib/api";
 import { saveBrowserGeneration } from "@/lib/browser-generations";
 
 const browserApiKey = process.env.NEXT_PUBLIC_GEMINI_BROWSER_KEY?.trim() ?? "";
@@ -31,14 +31,22 @@ export function GenerationComposer(props: {
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
+  const [referencePhoto, setReferencePhoto] = useState<File | null>(null);
   const [enhancePortrait, setEnhancePortrait] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function submitFreePrompt() {
     const trimmed = prompt.trim();
-    if (!trimmed) {
-      setMessage("Введите запрос.");
+    const hasReference = Boolean(referencePhoto);
+
+    if (!hasReference && !trimmed) {
+      setMessage("Введите запрос или прикрепите фото.");
+      return;
+    }
+
+    if (hasReference) {
+      submitReferencePhoto();
       return;
     }
 
@@ -62,6 +70,30 @@ export function GenerationComposer(props: {
         });
         setPrompt("");
         setMessage(`Генерация запущена: ${result.jobId}`);
+        router.refresh();
+      } catch (error) {
+        setMessage(
+          error instanceof Error ? error.message : "Не удалось запустить генерацию."
+        );
+      }
+    });
+  }
+
+  function submitReferencePhoto() {
+    if (!referencePhoto) return;
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const { storageKey } = await uploadReferencePhoto(referencePhoto);
+        const result = await createGenerationRequest({
+          mode: "reference",
+          referencePhotoKey: storageKey,
+          prompt: prompt.trim() || undefined,
+          enhancePortrait,
+        });
+        setReferencePhoto(null);
+        setPrompt("");
+        setMessage(`Генерация по фото запущена: ${result.jobId}`);
         router.refresh();
       } catch (error) {
         setMessage(
@@ -278,9 +310,44 @@ export function GenerationComposer(props: {
         <textarea
           value={prompt}
           onChange={(event) => setPrompt(event.currentTarget.value)}
-          placeholder="Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
+          placeholder={
+            referencePhoto
+              ? "Опционально: что ещё изменить в композиции?"
+              : "Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
+          }
           className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
+        <div className="mt-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
+            <span>Или прикрепите фото</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setReferencePhoto(e.target.files?.[0] ?? null)}
+              className="file:rounded-lg file:border-0 file:bg-cyan-500/20 file:px-3 file:py-1.5 file:text-cyan-300 file:transition file:hover:bg-cyan-500/30"
+            />
+          </label>
+          {referencePhoto && (
+            <div className="mt-2 flex items-center gap-3">
+              <img
+                src={URL.createObjectURL(referencePhoto)}
+                alt=""
+                className="h-20 w-20 rounded-lg object-cover"
+              />
+              <span className="text-sm text-slate-400">{referencePhoto.name}</span>
+              <button
+                type="button"
+                onClick={() => setReferencePhoto(null)}
+                className="text-sm text-red-400 hover:text-red-300"
+              >
+                Убрать
+              </button>
+            </div>
+          )}
+          <p className="mt-1 text-xs text-slate-500">
+            На фото должен быть 1 человек. Мы проанализируем сцену и вставим вас в неё.
+          </p>
+        </div>
         <label className="mt-4 flex cursor-pointer items-center gap-3">
           <input
             type="checkbox"
