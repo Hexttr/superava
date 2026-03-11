@@ -239,7 +239,7 @@ async function runReferenceJob(
 
   const sceneDescription = await analyzeSceneFromImage({
     imageBuffer: refBuffer,
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
   });
 
   const [promptParts, appConfig] = await Promise.all([
