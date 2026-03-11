@@ -102,6 +102,9 @@ export function normalizeGeminiErrorMessage(message?: string | null) {
   return normalized;
 }
 
+export const ENHANCE_PORTRAIT_PROMPT =
+  "Apply subtle portrait enhancement: bright, expressive eyes with natural sparkle and lively gaze; soft, even skin tone with gentle retouching, no visible wrinkles or under-eye bags; well-lit, airy scene without dark or gloomy tones; polished, magazine-quality finish with flattering lighting.";
+
 export function buildGenerationPrompt(args: {
   input: CreateGenerationInput;
   profile: PhotoProfile;
@@ -115,6 +118,7 @@ export function buildGenerationPrompt(args: {
     args.input.prompt ? `User request: ${args.input.prompt}.` : undefined,
     `Reference photos cover ${args.profile.shots.filter((shot) => shot.status !== "missing").length} face angles.`,
     `Profile completeness: ${args.profile.completionPercent}%.`,
+    args.input.enhancePortrait ? ENHANCE_PORTRAIT_PROMPT : undefined,
   ].filter(Boolean);
 
   return promptParts.join(" ");
@@ -136,6 +140,7 @@ export const createGenerationInputSchema = z.object({
   mode: generationModeSchema,
   prompt: z.string().min(1).max(1200).optional(),
   templateId: z.string().optional(),
+  enhancePortrait: z.boolean().optional(),
 });
 
 export type CreateGenerationInput = z.infer<typeof createGenerationInputSchema>;

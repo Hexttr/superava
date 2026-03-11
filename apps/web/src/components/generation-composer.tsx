@@ -29,6 +29,7 @@ export function GenerationComposer(props: {
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
+  const [enhancePortrait, setEnhancePortrait] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -44,6 +45,7 @@ export function GenerationComposer(props: {
         prompt: trimmed,
         title: trimmed,
         mode: "free",
+        enhancePortrait,
       });
       return;
     }
@@ -54,6 +56,7 @@ export function GenerationComposer(props: {
         const result = await createGenerationRequest({
           mode: "free",
           prompt: trimmed,
+          enhancePortrait,
         });
         setPrompt("");
         setMessage(`Генерация запущена: ${result.jobId}`);
@@ -71,6 +74,7 @@ export function GenerationComposer(props: {
     title: string;
     mode: "free" | "template";
     template?: PromptTemplate;
+    enhancePortrait?: boolean;
   }) {
     setMessage(null);
 
@@ -115,6 +119,7 @@ export function GenerationComposer(props: {
                     input: {
                       mode: args.mode,
                       prompt: args.prompt,
+                      enhancePortrait: args.enhancePortrait ?? false,
                     },
                     profile: props.profile,
                     config: props.generationPromptConfig,
@@ -223,6 +228,7 @@ export function GenerationComposer(props: {
         title: template.title,
         prompt: template.promptSkeleton,
         template,
+        enhancePortrait,
       });
       return;
     }
@@ -233,6 +239,7 @@ export function GenerationComposer(props: {
         const result = await createGenerationRequest({
           mode: "template",
           templateId: template.id,
+          enhancePortrait,
         });
         setMessage(`Шаблон запущен: ${result.jobId}`);
         router.refresh();
@@ -271,6 +278,17 @@ export function GenerationComposer(props: {
           placeholder="Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
           className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
+        <label className="mt-4 flex cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            checked={enhancePortrait}
+            onChange={(e) => setEnhancePortrait(e.target.checked)}
+            className="h-4 w-4 rounded border-white/20 bg-white/5 text-cyan-400 focus:ring-cyan-400/40"
+          />
+          <span className="text-sm text-slate-300">
+            Улучшить портрет — смягчить кожу, добавить живость взгляду, осветлить кадр
+          </span>
+        </label>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
             type="button"

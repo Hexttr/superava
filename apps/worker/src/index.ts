@@ -169,6 +169,7 @@ async function runJob(payload: {
   mode: "free" | "template";
   prompt?: string;
   templateId?: string;
+  enhancePortrait?: boolean;
 }) {
   await prisma.generationRequest.update({
     where: { id: payload.requestId },
@@ -196,6 +197,7 @@ async function runJob(payload: {
       mode: payload.mode,
       prompt: payload.prompt,
       templateId: payload.templateId,
+      enhancePortrait: payload.enhancePortrait ?? false,
     },
     profile: {
       id: profile.id,

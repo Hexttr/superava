@@ -39,6 +39,7 @@ export async function createGeneration(
     mode: input.mode,
     prompt: input.prompt,
     templateId: input.templateId,
+    enhancePortrait: input.enhancePortrait ?? false,
   });
 
   if (!jobId) {
