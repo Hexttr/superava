@@ -105,19 +105,47 @@ export function normalizeGeminiErrorMessage(message?: string | null) {
 export const ENHANCE_PORTRAIT_PROMPT =
   "Apply subtle portrait enhancement: bright, expressive eyes with natural sparkle and lively gaze; soft, even skin tone with gentle retouching, no visible wrinkles or under-eye bags; well-lit, airy scene without dark or gloomy tones; polished, magazine-quality finish with flattering lighting.";
 
+const CLOSED_MOUTH_PROMPT =
+  "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile, no open mouth in the generated image.";
+
+const SHORT_PROMPT_EXPANSION_PREFIX =
+  "First, mentally expand this minimal request into a rich cinematic scene: imagine environment, lighting, composition, props, and styling. Then generate the image. User request: ";
+
+function isShortUserPrompt(prompt: string): boolean {
+  const trimmed = prompt.trim();
+  if (!trimmed) return false;
+  const wordCount = trimmed.split(/\s+/).length;
+  return trimmed.length < 80 || wordCount < 6;
+}
+
 export function buildGenerationPrompt(args: {
   input: CreateGenerationInput;
   profile: PhotoProfile;
   template?: PromptTemplate;
   config?: GenerationPromptConfig;
 }) {
+  const hasSmileShot = args.profile.shots.some(
+    (s) => s.type === "front_smile" && s.status !== "missing"
+  );
+  const closedMouthRule = !hasSmileShot ? CLOSED_MOUTH_PROMPT : undefined;
+
+  const userPrompt = args.input.prompt?.trim();
+  let userRequestPart: string | undefined;
+  if (userPrompt) {
+    userRequestPart =
+      userPrompt && args.input.mode === "free" && isShortUserPrompt(userPrompt)
+        ? `${SHORT_PROMPT_EXPANSION_PREFIX}${userPrompt}.`
+        : `User request: ${userPrompt}.`;
+  }
+
   const promptParts = [
     args.config?.basePrompt || DEFAULT_GENERATION_BASE_PROMPT,
     args.template?.promptSkeleton ? `Template direction: ${args.template.promptSkeleton}` : undefined,
     args.template?.title ? `Template title: ${args.template.title}.` : undefined,
-    args.input.prompt ? `User request: ${args.input.prompt}.` : undefined,
+    userRequestPart,
     `Reference photos cover ${args.profile.shots.filter((shot) => shot.status !== "missing").length} face angles.`,
     `Profile completeness: ${args.profile.completionPercent}%.`,
+    closedMouthRule,
     args.input.enhancePortrait ? ENHANCE_PORTRAIT_PROMPT : undefined,
   ].filter(Boolean);
 
