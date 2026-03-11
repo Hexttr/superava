@@ -5,59 +5,125 @@ import {
 } from "@superava/shared";
 import { prisma } from "../db.js";
 import { boss, JOB_NAMES } from "../queue.js";
+import { quoteGeneration, releaseGenerationReservation } from "./billing.js";
 import { getOrCreateProfile } from "./profile.js";
 
 export async function createGeneration(
   userId: string,
   input: CreateGenerationInput
-): Promise<{ jobId: string; requestId: string }> {
+): Promise<{
+  jobId: string;
+  requestId: string;
+  amountMinor: number;
+  currency: "RUB";
+  billingStatus: "NONE" | "RESERVED" | "CAPTURED" | "RELEASED" | "REFUNDED";
+}> {
   await getOrCreateProfile(userId);
 
-  if (input.mode === "template" && input.templateId) {
-    const template = await prisma.promptTemplate.findUnique({
-      where: { id: input.templateId },
+  const { quote, pricingSnapshotJson } = await quoteGeneration(input);
+
+  const request = await prisma.$transaction(async (tx) => {
+    const created = await tx.generationRequest.create({
+      data: {
+        userId,
+        mode: input.mode,
+        prompt: input.prompt ?? null,
+        templateId: input.templateId ?? null,
+        referencePhotoKey: input.referencePhotoKey ?? null,
+        status: "queued",
+        billingStatus:
+          quote.billingEnabled && quote.amountMinor > 0 ? "RESERVED" : "NONE",
+        pricingType: quote.pricingType,
+        priceMinor: quote.amountMinor,
+        currency: quote.currency,
+        pricingSnapshotJson,
+      },
     });
 
-    if (!template) {
-      throw new Error("template_not_found");
+    if (quote.billingEnabled && quote.amountMinor > 0) {
+      const account = await tx.billingAccount.upsert({
+        where: { userId },
+        create: {
+          userId,
+          currency: quote.currency,
+        },
+        update: {},
+      });
+
+      const availableMinor = account.balanceMinor - account.reservedMinor;
+      if (availableMinor < quote.amountMinor) {
+        throw new Error("insufficient_balance");
+      }
+
+      await tx.billingAccount.update({
+        where: { id: account.id },
+        data: {
+          reservedMinor: {
+            increment: quote.amountMinor,
+          },
+        },
+      });
+
+      await tx.billingLedgerEntry.create({
+        data: {
+          accountId: account.id,
+          userId,
+          type: "GENERATION_RESERVE",
+          amountMinor: quote.amountMinor,
+          currency: quote.currency,
+          generationRequestId: created.id,
+          idempotencyKey: `generation-reserve:${created.id}`,
+          description: quote.description,
+          metadataJson: pricingSnapshotJson,
+        },
+      });
     }
-  }
 
-  if (input.mode === "reference" && !input.referencePhotoKey) {
-    throw new Error("reference_photo_required");
-  }
+    return created;
+  });
 
-  const request = await prisma.generationRequest.create({
-    data: {
+  try {
+    const jobId = await boss.send(JOB_NAMES.GENERATION, {
+      requestId: request.id,
       userId,
       mode: input.mode,
-      prompt: input.prompt ?? null,
-      templateId: input.templateId ?? null,
-      referencePhotoKey: input.referencePhotoKey ?? null,
-      status: "queued",
-    },
-  });
+      prompt: input.prompt,
+      templateId: input.templateId,
+      referencePhotoKey: input.referencePhotoKey,
+      enhancePortrait: input.enhancePortrait ?? false,
+    });
 
-  const jobId = await boss.send(JOB_NAMES.GENERATION, {
-    requestId: request.id,
-    userId,
-    mode: input.mode,
-    prompt: input.prompt,
-    templateId: input.templateId,
-    referencePhotoKey: input.referencePhotoKey,
-    enhancePortrait: input.enhancePortrait ?? false,
-  });
+    if (!jobId) {
+      throw new Error("job_enqueue_failed");
+    }
 
-  if (!jobId) {
-    throw new Error("job_enqueue_failed");
+    await prisma.generationRequest.update({
+      where: { id: request.id },
+      data: { jobId },
+    });
+
+    return {
+      jobId,
+      requestId: request.id,
+      amountMinor: request.priceMinor,
+      currency: request.currency,
+      billingStatus: request.billingStatus,
+    };
+  } catch (error) {
+    await releaseGenerationReservation({
+      requestId: request.id,
+      reason: "Job enqueue failed",
+    });
+    await prisma.generationRequest.update({
+      where: { id: request.id },
+      data: {
+        status: "failed",
+        errorMessage:
+          error instanceof Error ? error.message : "job_enqueue_failed",
+      },
+    });
+    throw error;
   }
-
-  await prisma.generationRequest.update({
-    where: { id: request.id },
-    data: { jobId },
-  });
-
-  return { jobId, requestId: request.id };
 }
 
 export async function listGenerations(userId: string): Promise<GenerationRecord[]> {
@@ -90,6 +156,9 @@ export async function listGenerations(userId: string): Promise<GenerationRecord[
     id: r.id,
     mode: r.mode as "free" | "template" | "reference",
     status: r.status as GenerationRecord["status"],
+    billingStatus: r.billingStatus as GenerationRecord["billingStatus"],
+    priceMinor: r.priceMinor,
+    currency: r.currency as GenerationRecord["currency"],
     title:
       r.prompt ??
       (r.mode === "reference"

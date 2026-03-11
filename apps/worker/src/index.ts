@@ -6,6 +6,7 @@ loadEnv({ path: [".env", "../../.env"] });
 import { buildReferenceModePrompt } from "@superava/shared";
 import { DEFAULT_GENERATION_BASE_PROMPT, GeminiProviderAdapter } from "@superava/ai-provider";
 import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import PgBoss from "pg-boss";
 import sharp from "sharp";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
@@ -16,6 +17,17 @@ const provider = new GeminiProviderAdapter();
 const connectionString = process.env.DATABASE_URL;
 const imageModel = process.env.GEMINI_IMAGE_MODEL?.trim() || "gemini-3-pro-image-preview";
 const maxRefImages = imageModel.includes("2.5-flash-image") ? 3 : 14;
+const workerService = "generation";
+const workerId = process.env.WORKER_ID?.trim() || `${hostname()}-${process.pid}`;
+const workerStartedAt = new Date();
+const heartbeatIntervalMs = Math.max(
+  1000,
+  Number(process.env.WORKER_HEARTBEAT_INTERVAL_MS ?? "5000")
+);
+const generationStaleTimeoutMs = Math.max(
+  60_000,
+  Number(process.env.GENERATION_STALE_TIMEOUT_MS ?? String(45 * 60 * 1000))
+);
 const geminiApiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 const proxyUrl =
   process.env.HTTPS_PROXY ??
@@ -33,6 +45,7 @@ const boss = new PgBoss({
   schema: "pgboss",
 });
 const GENERATION_QUEUE = "generation";
+let heartbeatTimer: NodeJS.Timeout | undefined;
 
 function ensureGeminiApiKey() {
   if (!geminiApiKey) {
@@ -50,6 +63,179 @@ const SHOT_PRIORITY: Record<string, number> = {
   left_profile: 4,
   right_profile: 5,
 };
+
+async function captureGenerationCharge(requestId: string) {
+  const request = await prisma.generationRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      user: {
+        include: {
+          billingAccount: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !request ||
+    request.billingStatus !== "RESERVED" ||
+    !request.user.billingAccount ||
+    request.priceMinor <= 0
+  ) {
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.billingAccount.update({
+      where: { id: request.user.billingAccount.id },
+      data: {
+        reservedMinor: {
+          decrement: request.priceMinor,
+        },
+        balanceMinor: {
+          decrement: request.priceMinor,
+        },
+      },
+    }),
+    prisma.billingLedgerEntry.create({
+      data: {
+        accountId: request.user.billingAccount.id,
+        userId: request.userId,
+        type: "GENERATION_CAPTURE",
+        amountMinor: request.priceMinor,
+        currency: request.currency,
+        generationRequestId: request.id,
+        idempotencyKey: `generation-capture:${request.id}`,
+        description: "Generation charge captured",
+      },
+    }),
+    prisma.generationRequest.update({
+      where: { id: request.id },
+      data: {
+        billingStatus: "CAPTURED",
+      },
+    }),
+  ]);
+}
+
+async function releaseGenerationReservation(requestId: string, reason: string) {
+  const request = await prisma.generationRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      user: {
+        include: {
+          billingAccount: true,
+        },
+      },
+    },
+  });
+
+  if (
+    !request ||
+    request.billingStatus !== "RESERVED" ||
+    !request.user.billingAccount ||
+    request.priceMinor <= 0
+  ) {
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.billingAccount.update({
+      where: { id: request.user.billingAccount.id },
+      data: {
+        reservedMinor: {
+          decrement: request.priceMinor,
+        },
+      },
+    }),
+    prisma.billingLedgerEntry.create({
+      data: {
+        accountId: request.user.billingAccount.id,
+        userId: request.userId,
+        type: "GENERATION_RELEASE",
+        amountMinor: request.priceMinor,
+        currency: request.currency,
+        generationRequestId: request.id,
+        idempotencyKey: `generation-release:${request.id}`,
+        description: reason,
+      },
+    }),
+    prisma.generationRequest.update({
+      where: { id: request.id },
+      data: {
+        billingStatus: "RELEASED",
+      },
+    }),
+  ]);
+}
+
+async function upsertWorkerHeartbeat(status: "ok" | "starting" | "stopping" | "error", lastError?: string) {
+  await prisma.workerHeartbeat.upsert({
+    where: { workerId },
+    create: {
+      workerId,
+      service: workerService,
+      status,
+      startedAt: workerStartedAt,
+      heartbeatAt: new Date(),
+      lastError: lastError ?? null,
+      metadataJson: {
+        pid: process.pid,
+        host: hostname(),
+        imageModel,
+      },
+    },
+    update: {
+      service: workerService,
+      status,
+      heartbeatAt: new Date(),
+      lastError: lastError ?? null,
+      metadataJson: {
+        pid: process.pid,
+        host: hostname(),
+        imageModel,
+      },
+    },
+  });
+}
+
+function startHeartbeat() {
+  heartbeatTimer = setInterval(() => {
+    void upsertWorkerHeartbeat("ok").catch((error) => {
+      console.error("[worker] heartbeat failed", error);
+    });
+  }, heartbeatIntervalMs);
+  heartbeatTimer.unref();
+}
+
+async function recoverStaleGenerations() {
+  const staleBefore = new Date(Date.now() - generationStaleTimeoutMs);
+  const staleRequests = await prisma.generationRequest.findMany({
+    where: {
+      status: {
+        in: ["processing", "finalizing"],
+      },
+      updatedAt: {
+        lt: staleBefore,
+      },
+    },
+    select: {
+      id: true,
+    },
+    take: 100,
+  });
+
+  for (const request of staleRequests) {
+    await releaseGenerationReservation(request.id, "generation_stalled").catch(() => undefined);
+    await prisma.generationRequest.update({
+      where: { id: request.id },
+      data: {
+        status: "failed",
+        errorMessage: "generation_stalled",
+      },
+    }).catch(() => undefined);
+  }
+}
 
 async function buildReferenceParts(
   shots: Array<{ storageKey: string | null; shotType?: string }>
@@ -315,6 +501,7 @@ async function runReferenceJob(
     where: { id: payload.requestId },
     data: { status: "completed" },
   });
+  await captureGenerationCharge(payload.requestId);
 }
 
 async function runJob(payload: {
@@ -326,6 +513,17 @@ async function runJob(payload: {
   referencePhotoKey?: string;
   enhancePortrait?: boolean;
 }) {
+  const request = await prisma.generationRequest.findUnique({
+    where: { id: payload.requestId },
+    select: {
+      status: true,
+    },
+  });
+
+  if (!request || request.status === "completed" || request.status === "failed") {
+    return;
+  }
+
   await prisma.generationRequest.update({
     where: { id: payload.requestId },
     data: { status: "processing", errorMessage: null },
@@ -407,6 +605,9 @@ async function runJob(payload: {
           previewLabel: template.previewLabel,
           description: template.description,
           promptSkeleton: template.promptSkeleton,
+          priceMinor: template.priceMinor,
+          currency: template.currency as "RUB",
+          isActive: template.isActive,
         }
       : undefined,
     config: {
@@ -445,16 +646,25 @@ async function runJob(payload: {
     where: { id: payload.requestId },
     data: { status: "completed" },
   });
+  await captureGenerationCharge(payload.requestId);
 }
 
 async function main() {
   await prisma.$connect();
+  await upsertWorkerHeartbeat("starting");
+  await recoverStaleGenerations();
   await ensureBucket();
   await boss.start();
   await boss.createQueue(GENERATION_QUEUE).catch(() => undefined);
+  await upsertWorkerHeartbeat("ok");
+  startHeartbeat();
 
   boss.on("error", (error) => {
     console.error("[worker] queue error", error);
+    void upsertWorkerHeartbeat(
+      "ok",
+      error instanceof Error ? error.message : "queue_error"
+    ).catch(() => undefined);
   });
 
   await boss.work(GENERATION_QUEUE, async (jobs) => {
@@ -465,6 +675,10 @@ async function main() {
         const requestId = (job.data as { requestId?: string }).requestId;
 
         if (requestId) {
+          await releaseGenerationReservation(
+            requestId,
+            error instanceof Error ? error.message : "generation_failed"
+          ).catch(() => undefined);
           await prisma.generationRequest.update({
             where: { id: requestId },
             data: {
@@ -475,6 +689,10 @@ async function main() {
           });
         }
 
+        await upsertWorkerHeartbeat(
+          "ok",
+          error instanceof Error ? error.message : "generation_failed"
+        ).catch(() => undefined);
         throw error;
       }
     }
@@ -485,6 +703,11 @@ async function main() {
 
 main().catch(async (error) => {
   console.error("[worker] fatal error", error);
+  clearInterval(heartbeatTimer);
+  await upsertWorkerHeartbeat(
+    "error",
+    error instanceof Error ? error.message : "worker_fatal_error"
+  ).catch(() => undefined);
   await boss.stop().catch(() => undefined);
   await prisma.$disconnect().catch(() => undefined);
   process.exit(1);
@@ -492,6 +715,8 @@ main().catch(async (error) => {
 
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.on(signal, async () => {
+    clearInterval(heartbeatTimer);
+    await upsertWorkerHeartbeat("stopping").catch(() => undefined);
     await boss.stop().catch(() => undefined);
     await prisma.$disconnect().catch(() => undefined);
     process.exit(0);

@@ -14,6 +14,9 @@ export type ShotType = z.infer<typeof shotTypeSchema>;
 export const generationModeSchema = z.enum(["free", "template", "reference"]);
 export type GenerationMode = z.infer<typeof generationModeSchema>;
 
+export const generationPricingTypeSchema = z.enum(["TEXT", "TEMPLATE", "REFERENCE"]);
+export type GenerationPricingType = z.infer<typeof generationPricingTypeSchema>;
+
 export const generationStatusSchema = z.enum([
   "queued",
   "processing",
@@ -25,6 +28,18 @@ export type GenerationStatus = z.infer<typeof generationStatusSchema>;
 
 export const templateGroupSchema = z.enum(["vip", "holiday"]);
 export type TemplateGroup = z.infer<typeof templateGroupSchema>;
+
+export const currencyCodeSchema = z.enum(["RUB"]);
+export type CurrencyCode = z.infer<typeof currencyCodeSchema>;
+
+export const generationBillingStatusSchema = z.enum([
+  "NONE",
+  "RESERVED",
+  "CAPTURED",
+  "RELEASED",
+  "REFUNDED",
+]);
+export type GenerationBillingStatus = z.infer<typeof generationBillingStatusSchema>;
 
 export const userRoleSchema = z.enum(["USER", "ADMIN"]);
 export type UserRole = z.infer<typeof userRoleSchema>;
@@ -81,6 +96,9 @@ export const promptTemplateSchema = z.object({
   promptSkeleton: z.string(),
   categoryId: z.string().nullable().optional(),
   previewKey: z.string().nullable().optional(),
+  priceMinor: z.number().int().nonnegative().default(0),
+  currency: currencyCodeSchema.default("RUB"),
+  isActive: z.boolean().default(true),
 });
 
 export type PromptTemplate = z.infer<typeof promptTemplateSchema>;
@@ -277,6 +295,9 @@ export const generationRecordSchema = z.object({
   id: z.string(),
   mode: generationModeSchema,
   status: generationStatusSchema,
+  billingStatus: generationBillingStatusSchema.default("NONE"),
+  priceMinor: z.number().int().nonnegative().default(0),
+  currency: currencyCodeSchema.default("RUB"),
   title: z.string(),
   subtitle: z.string(),
   createdAt: z.string(),
@@ -294,6 +315,34 @@ export const createGenerationInputSchema = z.object({
 });
 
 export type CreateGenerationInput = z.infer<typeof createGenerationInputSchema>;
+
+export const billingAccountSchema = z.object({
+  balanceMinor: z.number().int(),
+  reservedMinor: z.number().int(),
+  availableMinor: z.number().int(),
+  currency: currencyCodeSchema,
+});
+
+export type BillingAccount = z.infer<typeof billingAccountSchema>;
+
+export const generationQuoteSchema = z.object({
+  pricingType: generationPricingTypeSchema,
+  amountMinor: z.number().int().nonnegative(),
+  currency: currencyCodeSchema,
+  billingEnabled: z.boolean(),
+  description: z.string(),
+});
+
+export type GenerationQuote = z.infer<typeof generationQuoteSchema>;
+
+export const billingPricingSchema = z.object({
+  billingEnabled: z.boolean(),
+  textGenerationPriceMinor: z.number().int().nonnegative(),
+  photoGenerationPriceMinor: z.number().int().nonnegative(),
+  currency: currencyCodeSchema,
+});
+
+export type BillingPricing = z.infer<typeof billingPricingSchema>;
 
 export const defaultProfileShots: ProfileShot[] = [
   {
@@ -358,6 +407,9 @@ export const demoTemplates: PromptTemplate[] = [
     description: "Дорогой свет, чистый портрет, эффектный кадр.",
     promptSkeleton:
       "Luxury editorial portrait, premium styling, professional studio light, cinematic finish, photorealistic skin texture.",
+    priceMinor: 12900,
+    currency: "RUB",
+    isActive: true,
   },
   {
     id: "template-holiday-hero",
@@ -369,6 +421,9 @@ export const demoTemplates: PromptTemplate[] = [
     description: "Праздничная сцена с аккуратной посадкой лица.",
     promptSkeleton:
       "Festive holiday portrait, polished lighting, elegant seasonal atmosphere, photorealistic result, clean face match.",
+    priceMinor: 11900,
+    currency: "RUB",
+    isActive: true,
   },
   {
     id: "template-birthday-rooftop-sunset",
@@ -380,6 +435,9 @@ export const demoTemplates: PromptTemplate[] = [
     description: "Закатный ужин на крыше с luxury-настроением и журнальной подачей.",
     promptSkeleton:
       "Create a highly realistic photo of an elegant woman sitting on the terrace of a luxury rooftop restaurant at sunset. She is seated sideways to the camera at a round white marble table, with a panoramic view of a big city skyline and tall skyscrapers in the background, all lit by warm golden hour light. She is wearing a long light-beige open coat, a plain white V-neck top tucked into high-waisted white cropped tailored trousers. On her feet are nude high-heel pumps with thin heels. She leans slightly back in a soft beige chair, with one leg crossed over the other, her pose relaxed, confident and feminine. One hand rests on a beige clutch on the table; on her wrist a gold bracelet, on her fingers a delicate ring, on her neck a thin gold chain with a small pendant, and elegant earrings in her ears. On the table there is a glass of champagne and a small white cup with saucer. The lighting is very soft and warm, emphasizing the beige-cream color palette of the outfit and the interior. The style of the shot is chic lifestyle and fashion photography for a business and luxury magazine, realistic, high detail, vertical composition.",
+    priceMinor: 15900,
+    currency: "RUB",
+    isActive: true,
   },
 ];
 
@@ -392,6 +450,9 @@ export const demoGenerations: GenerationRecord[] = [
     id: "gen-queued",
     mode: "template",
     status: "queued",
+    billingStatus: "RESERVED",
+    priceMinor: 11900,
+    currency: "RUB",
     title: "Holiday Hero",
     subtitle: "Готовим кадры",
     createdAt: "2026-03-10T12:00:00.000Z",
@@ -400,6 +461,9 @@ export const demoGenerations: GenerationRecord[] = [
     id: "gen-processing",
     mode: "free",
     status: "processing",
+    billingStatus: "CAPTURED",
+    priceMinor: 9900,
+    currency: "RUB",
     title: "Tokyo rooftop at night",
     subtitle: "Генерируем",
     createdAt: "2026-03-10T11:45:00.000Z",
@@ -408,6 +472,9 @@ export const demoGenerations: GenerationRecord[] = [
     id: "gen-completed",
     mode: "template",
     status: "completed",
+    billingStatus: "CAPTURED",
+    priceMinor: 12900,
+    currency: "RUB",
     title: "VIP Portrait",
     subtitle: "Готово",
     createdAt: "2026-03-10T10:15:00.000Z",

@@ -27,6 +27,9 @@ export interface PromptTemplateAdmin {
   promptSkeleton: string;
   previewKey: string | null;
   categoryId: string | null;
+  priceMinor: number;
+  currency: "RUB";
+  isActive: boolean;
   category?: { id: string; name: string } | null;
 }
 
@@ -36,6 +39,14 @@ export interface PromptPart {
   label: string;
   value: string;
   sortOrder: number;
+}
+
+export interface AdminAppConfig {
+  id: string;
+  billingEnabled: boolean;
+  textGenerationPriceMinor: number;
+  photoGenerationPriceMinor: number;
+  currency: "RUB";
 }
 
 export type { AdminUser, UserRole, UserStatus };
@@ -113,6 +124,8 @@ export async function createTemplate(data: {
   description?: string;
   promptSkeleton?: string;
   categoryId?: string | null;
+  priceMinor?: number;
+  isActive?: boolean;
 }): Promise<PromptTemplateAdmin> {
   return adminFetch<PromptTemplateAdmin>("/api/v1/admin/templates", {
     method: "POST",
@@ -132,6 +145,8 @@ export async function updateTemplate(
     promptSkeleton: string;
     categoryId: string | null;
     previewKey: string;
+    priceMinor: number;
+    isActive: boolean;
   }>
 ): Promise<PromptTemplateAdmin> {
   return adminFetch<PromptTemplateAdmin>(`/api/v1/admin/templates/${id}`, {
@@ -171,6 +186,23 @@ export async function updatePromptPart(
   data: { label?: string; value?: string; sortOrder?: number }
 ): Promise<PromptPart> {
   return adminFetch<PromptPart>(`/api/v1/admin/prompt-parts/${key}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAdminAppConfig(): Promise<AdminAppConfig> {
+  return adminFetch<AdminAppConfig>("/api/v1/admin/app-config");
+}
+
+export async function updateAdminAppConfig(
+  data: Partial<{
+    billingEnabled: boolean;
+    textGenerationPriceMinor: number;
+    photoGenerationPriceMinor: number;
+  }>
+): Promise<AdminAppConfig> {
+  return adminFetch<AdminAppConfig>("/api/v1/admin/app-config", {
     method: "PATCH",
     body: JSON.stringify(data),
   });

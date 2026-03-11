@@ -22,6 +22,14 @@ const browserModel =
 const generationTransport = process.env.NEXT_PUBLIC_GEMINI_TRANSPORT?.trim() ?? "server";
 const browserTransportEnabled = generationTransport === "browser" && Boolean(browserApiKey);
 
+function formatRub(minor: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(minor / 100);
+}
+
 export function GenerationComposer(props: {
   templates: PromptTemplate[];
   profile: PhotoProfile;
@@ -80,9 +88,7 @@ export function GenerationComposer(props: {
         setMessage(`Генерация запущена: ${result.jobId}`);
         router.refresh();
       } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Не удалось запустить генерацию."
-        );
+        setMessage(normalizeGenerationLaunchError(error));
       }
     });
   }
@@ -104,9 +110,7 @@ export function GenerationComposer(props: {
         setMessage(`Генерация по фото запущена: ${result.jobId}`);
         router.refresh();
       } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Не удалось запустить генерацию."
-        );
+        setMessage(normalizeGenerationLaunchError(error));
       }
     });
   }
@@ -209,6 +213,9 @@ export function GenerationComposer(props: {
             id: `browser-${crypto.randomUUID()}`,
             mode: args.mode,
             status: "failed",
+            billingStatus: "NONE",
+            priceMinor: 0,
+            currency: "RUB",
             title: args.title,
             subtitle: errorMessage,
             createdAt: new Date().toISOString(),
@@ -225,6 +232,9 @@ export function GenerationComposer(props: {
             id: `browser-${crypto.randomUUID()}`,
             mode: args.mode,
             status: "failed",
+            billingStatus: "NONE",
+            priceMinor: 0,
+            currency: "RUB",
             title: args.title,
             subtitle: "Gemini не вернул картинку.",
             createdAt: new Date().toISOString(),
@@ -238,6 +248,9 @@ export function GenerationComposer(props: {
           id: `browser-${crypto.randomUUID()}`,
           mode: args.mode,
           status: "completed",
+          billingStatus: "NONE",
+          priceMinor: 0,
+          currency: "RUB",
           title: args.title,
           subtitle: "Готово",
           createdAt: new Date().toISOString(),
@@ -254,6 +267,9 @@ export function GenerationComposer(props: {
           id: `browser-${crypto.randomUUID()}`,
           mode: args.mode,
           status: "failed",
+          billingStatus: "NONE",
+          priceMinor: 0,
+          currency: "RUB",
           title: args.title,
           subtitle: errorMessage,
           createdAt: new Date().toISOString(),
@@ -287,9 +303,7 @@ export function GenerationComposer(props: {
         setMessage(`Шаблон запущен: ${result.jobId}`);
         router.refresh();
       } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Не удалось запустить шаблон."
-        );
+        setMessage(normalizeGenerationLaunchError(error));
       }
     });
   }
@@ -402,6 +416,9 @@ export function GenerationComposer(props: {
                 <div>
                   <p className="text-base font-semibold text-white">{template.title}</p>
                   <p className="mt-1 text-sm text-slate-400">{template.subtitle}</p>
+                  <p className="mt-1 text-xs font-medium text-fuchsia-300">
+                    {formatRub(template.priceMinor)}
+                  </p>
                 </div>
                 <StatusPill label={template.previewLabel} tone="accent" />
               </div>
@@ -422,6 +439,18 @@ export function GenerationComposer(props: {
       ) : null}
     </div>
   );
+}
+
+function normalizeGenerationLaunchError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "Не удалось запустить генерацию.";
+  }
+
+  if (error.message === "insufficient_balance") {
+    return "Недостаточно средств на балансе.";
+  }
+
+  return error.message;
 }
 
 function getShotPreviewSrc(shot: PhotoProfile["shots"][number]) {

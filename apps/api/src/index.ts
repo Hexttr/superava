@@ -1,14 +1,18 @@
 import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
+import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import {
   adminUserSchema,
+  billingPricingSchema,
   type AuthUser,
   authUserSchema,
   apiRoutes,
+  billingAccountSchema,
   createGenerationInputSchema,
   demoGenerationPromptConfig,
+  generationQuoteSchema,
   shotTypeSchema,
   userRoleSchema,
   userStatusSchema,
@@ -18,6 +22,11 @@ import { prisma } from "./db.js";
 import { startQueue, stopQueue } from "./queue.js";
 import { createGeneration, listGenerations } from "./services/generation.js";
 import {
+  getBillingAccountSummary,
+  getBillingPricing,
+  quoteGeneration,
+} from "./services/billing.js";
+import {
   getOrCreateProfile,
   toApiProfile,
   uploadProfileShot,
@@ -25,6 +34,7 @@ import {
 import { validateImage } from "./image-pipeline.js";
 import {
   categoryPreviewKey,
+  checkBucketAccess,
   ensureBucket,
   getObject,
   putObject,
@@ -61,13 +71,26 @@ import {
 
 const app = Fastify({
   logger: true,
+  trustProxy: appConfig.trustProxy,
 });
 
 await app.register(cookie, {
   secret: appConfig.sessionSecret,
 });
+await app.register(helmet, {
+  global: true,
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+});
 await app.register(cors, {
-  origin: appConfig.webOrigin,
+  origin: (origin, callback) => {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, appConfig.webOrigins.includes(origin));
+  },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
 });
@@ -89,7 +112,7 @@ const sessionCookieOptions = {
 // --- User Auth ---
 app.post("/api/v1/auth/register", async (request, reply) => {
   const body = request.body as { email?: string; password?: string };
-  const rateLimit = checkAuthRateLimit("register", request, body?.email);
+  const rateLimit = await checkAuthRateLimit("register", request, body?.email);
   if (!rateLimit.ok) {
     return reply.status(429).send({
       error: "too_many_attempts",
@@ -97,15 +120,15 @@ app.post("/api/v1/auth/register", async (request, reply) => {
     });
   }
   if (!body?.email || !body?.password) {
-    recordAuthFailure("register", request, body?.email);
+    await recordAuthFailure("register", request, body?.email);
     return reply.status(400).send({ error: "email_and_password_required" });
   }
   const result = await registerAndCreateSession(body.email, body.password);
   if (!result.ok) {
-    recordAuthFailure("register", request, body.email);
+    await recordAuthFailure("register", request, body.email);
     return reply.status(400).send({ error: result.error });
   }
-  clearAuthRateLimit("register", request, body.email);
+  await clearAuthRateLimit("register", request, body.email);
   reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
 
   let debugVerifyUrl: string | undefined;
@@ -128,7 +151,7 @@ app.post("/api/v1/auth/register", async (request, reply) => {
 
 app.post("/api/v1/auth/login", async (request, reply) => {
   const body = request.body as { email?: string; password?: string };
-  const rateLimit = checkAuthRateLimit("login", request, body?.email);
+  const rateLimit = await checkAuthRateLimit("login", request, body?.email);
   if (!rateLimit.ok) {
     return reply.status(429).send({
       error: "too_many_attempts",
@@ -136,17 +159,17 @@ app.post("/api/v1/auth/login", async (request, reply) => {
     });
   }
   if (!body?.email || !body?.password) {
-    recordAuthFailure("login", request, body?.email);
+    await recordAuthFailure("login", request, body?.email);
     return reply.status(400).send({ error: "email_and_password_required" });
   }
   const result = await loginAndCreateSession(body.email, body.password);
   if (!result.ok) {
-    recordAuthFailure("login", request, body.email);
+    await recordAuthFailure("login", request, body.email);
     return reply
       .status(result.error === "account_blocked" ? 403 : 401)
       .send({ error: result.error });
   }
-  clearAuthRateLimit("login", request, body.email);
+  await clearAuthRateLimit("login", request, body.email);
   reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
   return reply.send({ ok: true });
 });
@@ -252,14 +275,75 @@ app.get("/api/v1/auth/me", async (request, reply) => {
   return reply.send(authUserSchema.parse(user));
 });
 
-app.get(apiRoutes.health, async () => {
-  const templateCount = await prisma.promptTemplate.count();
+app.get("/api/v1/billing/me", async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) return;
+  return reply.send(billingAccountSchema.parse(await getBillingAccountSummary(user.id)));
+});
 
+app.get("/api/v1/billing/pricing", async () => {
+  return billingPricingSchema.parse(await getBillingPricing());
+});
+
+app.get(apiRoutes.health, async () => {
   return {
     ok: true,
     service: "superava-api",
-    provider: "gemini-developer-api",
-    templateCount,
+    uptimeSeconds: Math.round(process.uptime()),
+    now: new Date().toISOString(),
+    nodeEnv: appConfig.nodeEnv,
+  };
+});
+
+app.get("/ready", async (request, reply) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    const checks: Record<string, string> = {
+      database: "ok",
+    };
+
+    if (appConfig.readinessCheckStorage) {
+      await checkBucketAccess();
+      checks.storage = "ok";
+    } else {
+      checks.storage = "skipped";
+    }
+
+    if (appConfig.readinessCheckWorker) {
+      const threshold = new Date(Date.now() - appConfig.workerHeartbeatTtlMs);
+      const worker = await prisma.workerHeartbeat.findFirst({
+        where: {
+          service: "generation",
+          heartbeatAt: {
+            gte: threshold,
+          },
+          status: "ok",
+        },
+        orderBy: {
+          heartbeatAt: "desc",
+        },
+      });
+
+      if (!worker) {
+        throw new Error("worker_unavailable");
+      }
+
+      checks.worker = "ok";
+    } else {
+      checks.worker = "skipped";
+    }
+
+    return {
+      ok: true,
+      checks,
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(503).send({
+      ok: false,
+      error: error instanceof Error ? error.message : "readiness_failed",
+    });
   };
 });
 
@@ -310,6 +394,7 @@ app.get(apiRoutes.profile, async (request, reply) => {
 
 app.get(apiRoutes.templates, async () => {
   const items = await prisma.promptTemplate.findMany({
+    where: { isActive: true },
     orderBy: [{ categoryId: "asc" }, { group: "asc" }, { title: "asc" }],
     include: { category: true },
   });
@@ -510,6 +595,8 @@ app.post("/api/v1/admin/templates", async (request, reply) => {
     description?: string;
     promptSkeleton?: string;
     categoryId?: string | null;
+    priceMinor?: number;
+    isActive?: boolean;
   };
   if (!body?.slug || !body?.title) {
     return reply.status(400).send({ error: "slug and title required" });
@@ -524,6 +611,8 @@ app.post("/api/v1/admin/templates", async (request, reply) => {
       description: body.description ?? "",
       promptSkeleton: body.promptSkeleton ?? "",
       categoryId: body.categoryId ?? null,
+      priceMinor: Math.max(0, body.priceMinor ?? 0),
+      isActive: body.isActive ?? true,
     },
   });
   return reply.status(201).send(created);
@@ -543,6 +632,8 @@ app.patch("/api/v1/admin/templates/:id", async (request, reply) => {
     promptSkeleton?: string;
     categoryId?: string | null;
     previewKey?: string;
+    priceMinor?: number;
+    isActive?: boolean;
   };
   const data: Record<string, unknown> = {};
   const fields = [
@@ -555,9 +646,13 @@ app.patch("/api/v1/admin/templates/:id", async (request, reply) => {
     "promptSkeleton",
     "categoryId",
     "previewKey",
+    "isActive",
   ] as const;
   for (const f of fields) {
     if (body?.[f] !== undefined) data[f] = body[f];
+  }
+  if (typeof body?.priceMinor === "number") {
+    data.priceMinor = Math.max(0, body.priceMinor);
   }
   const updated = await prisma.promptTemplate.update({
     where: { id },
@@ -615,6 +710,59 @@ app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
     data,
   });
   return reply.send(updated);
+});
+
+app.get("/api/v1/admin/app-config", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
+  const config = await prisma.appConfig.findUnique({
+    where: { id: "default" },
+  });
+
+  return {
+    id: "default",
+    billingEnabled: config?.billingEnabled ?? false,
+    textGenerationPriceMinor: config?.textGenerationPriceMinor ?? 0,
+    photoGenerationPriceMinor: config?.photoGenerationPriceMinor ?? 0,
+    currency: config?.currency ?? "RUB",
+  };
+});
+
+app.patch("/api/v1/admin/app-config", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
+  const body = request.body as {
+    billingEnabled?: boolean;
+    textGenerationPriceMinor?: number;
+    photoGenerationPriceMinor?: number;
+  };
+  const data: Record<string, unknown> = {};
+  if (typeof body?.billingEnabled === "boolean") data.billingEnabled = body.billingEnabled;
+  if (typeof body?.textGenerationPriceMinor === "number") {
+    data.textGenerationPriceMinor = Math.max(0, body.textGenerationPriceMinor);
+  }
+  if (typeof body?.photoGenerationPriceMinor === "number") {
+    data.photoGenerationPriceMinor = Math.max(0, body.photoGenerationPriceMinor);
+  }
+
+  const updated = await prisma.appConfig.upsert({
+    where: { id: "default" },
+    update: data,
+    create: {
+      id: "default",
+      baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
+      billingEnabled: typeof body?.billingEnabled === "boolean" ? body.billingEnabled : false,
+      textGenerationPriceMinor: Math.max(0, body?.textGenerationPriceMinor ?? 0),
+      photoGenerationPriceMinor: Math.max(0, body?.photoGenerationPriceMinor ?? 0),
+      currency: "RUB",
+    },
+  });
+
+  return reply.send({
+    id: updated.id,
+    billingEnabled: updated.billingEnabled,
+    textGenerationPriceMinor: updated.textGenerationPriceMinor,
+    photoGenerationPriceMinor: updated.photoGenerationPriceMinor,
+    currency: updated.currency,
+  });
 });
 
 // --- Admin: Users ---
@@ -731,17 +879,48 @@ app.post(apiRoutes.generations, async (request, reply) => {
 
   try {
     const input = parseResult.data;
-    const { jobId, requestId } = await createGeneration(user.id, input);
+    const { jobId, requestId, amountMinor, currency, billingStatus } = await createGeneration(
+      user.id,
+      input
+    );
 
     return reply.status(202).send({
       accepted: true,
       jobId,
       requestId,
+      amountMinor,
+      currency,
+      billingStatus,
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    const status =
+      error instanceof Error && error.message === "insufficient_balance" ? 402 : 500;
+    return reply.status(status).send({
       error: error instanceof Error ? error.message : "generation_create_failed",
+    });
+  }
+});
+
+app.post("/api/v1/generations/quote", async (request, reply) => {
+  const parseResult = createGenerationInputSchema.safeParse(request.body);
+
+  if (!parseResult.success) {
+    return reply.status(400).send({
+      error: "invalid_generation_payload",
+      issues: parseResult.error.issues,
+    });
+  }
+
+  const user = await requireUser(request, reply);
+  if (!user) return;
+
+  try {
+    const { quote } = await quoteGeneration(parseResult.data);
+    return reply.send(generationQuoteSchema.parse(quote));
+  } catch (error) {
+    return reply.status(400).send({
+      error: error instanceof Error ? error.message : "generation_quote_failed",
     });
   }
 });

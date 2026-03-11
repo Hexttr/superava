@@ -23,6 +23,8 @@ export function TemplateEditForm({
   const [description, setDescription] = useState(template.description);
   const [promptSkeleton, setPromptSkeleton] = useState(template.promptSkeleton);
   const [categoryId, setCategoryId] = useState(template.categoryId ?? "");
+  const [priceRub, setPriceRub] = useState(String(template.priceMinor / 100));
+  const [isActive, setIsActive] = useState(template.isActive);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,8 @@ export function TemplateEditForm({
         description,
         promptSkeleton,
         categoryId: categoryId || null,
+        priceMinor: Math.max(0, Math.round(Number(priceRub || "0") * 100)),
+        isActive,
       });
       router.refresh();
     } catch (err) {
@@ -139,6 +143,25 @@ export function TemplateEditForm({
           ))}
         </select>
       </div>
+      <div>
+        <label className="block text-sm text-slate-400">Цена, RUB</label>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={priceRub}
+          onChange={(e) => setPriceRub(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white"
+        />
+      </div>
+      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+        />
+        <span>Шаблон активен</span>
+      </label>
       <div>
         <label className="block text-sm text-slate-400">Превью</label>
         <input

@@ -10,6 +10,14 @@ import {
 } from "@/lib/server-api";
 import { templateTextBySlug } from "@/lib/ui-text";
 
+function formatRub(minor: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(minor / 100);
+}
+
 export default async function TemplatesPage({
   searchParams,
 }: {
@@ -53,6 +61,7 @@ export default async function TemplatesPage({
             <SectionCard eyebrow={template.group} title={template.title}>
               <div className="space-y-3">
                 <StatusPill label={template.previewLabel} tone="accent" />
+                <p className="text-sm font-semibold text-fuchsia-300">{formatRub(template.priceMinor)}</p>
                 <p>{templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}</p>
                 <p>{templateTextBySlug[template.slug]?.description ?? template.description}</p>
                 <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/50 p-5 text-center text-sm text-slate-400">

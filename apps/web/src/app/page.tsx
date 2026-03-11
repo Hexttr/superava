@@ -7,6 +7,8 @@ import { LogoutButton } from "@/components/logout-button";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
 import {
+  getBillingMe,
+  getBillingPricing,
   getCategories,
   getCurrentUser,
   getGenerationPromptConfig,
@@ -68,10 +70,30 @@ const CATEGORY_IMAGES: Record<string, string> = {
   Хэллоуин: `/images/category-halloween.jpg?v=${CATEGORY_IMAGE_VERSION}`,
 };
 
+function formatRub(minor: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(minor / 100);
+}
+
 export default async function Home() {
-  const [user, profile, templates, generations, generationPromptConfig, promptConstructor, categories] =
+  const [
+    user,
+    billing,
+    pricing,
+    profile,
+    templates,
+    generations,
+    generationPromptConfig,
+    promptConstructor,
+    categories,
+  ] =
     await Promise.all([
       getCurrentUser(),
+      getBillingMe(),
+      getBillingPricing(),
       getProfile(),
       getTemplates(),
       getGenerations(),
@@ -146,6 +168,17 @@ export default async function Home() {
                   Открыть админку
                 </Link>
               ) : null}
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Баланс</p>
+              <p className="mt-2 text-2xl font-semibold text-white">
+                {formatRub(billing?.availableMinor ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {pricing.billingEnabled
+                  ? `Текст: ${formatRub(pricing.textGenerationPriceMinor)} • Фото: ${formatRub(pricing.photoGenerationPriceMinor)}`
+                  : "Платежи пока в режиме настройки, цены уже доступны в админке."}
+              </p>
             </div>
             {!user?.emailVerified ? <ResendVerificationButton /> : null}
             <div className="mt-5">

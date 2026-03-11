@@ -121,6 +121,28 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
+exports.Prisma.AuthRateLimitScalarFieldEnum = {
+  key: 'key',
+  scope: 'scope',
+  attempts: 'attempts',
+  firstAttemptAt: 'firstAttemptAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.WorkerHeartbeatScalarFieldEnum = {
+  workerId: 'workerId',
+  service: 'service',
+  status: 'status',
+  startedAt: 'startedAt',
+  heartbeatAt: 'heartbeatAt',
+  lastError: 'lastError',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
@@ -158,6 +180,52 @@ exports.Prisma.PasswordResetTokenScalarFieldEnum = {
   expiresAt: 'expiresAt',
   consumedAt: 'consumedAt',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.BillingAccountScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  currency: 'currency',
+  balanceMinor: 'balanceMinor',
+  reservedMinor: 'reservedMinor',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BillingLedgerEntryScalarFieldEnum = {
+  id: 'id',
+  accountId: 'accountId',
+  userId: 'userId',
+  type: 'type',
+  status: 'status',
+  amountMinor: 'amountMinor',
+  currency: 'currency',
+  generationRequestId: 'generationRequestId',
+  paymentId: 'paymentId',
+  idempotencyKey: 'idempotencyKey',
+  description: 'description',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.PaymentScalarFieldEnum = {
+  id: 'id',
+  accountId: 'accountId',
+  userId: 'userId',
+  provider: 'provider',
+  type: 'type',
+  status: 'status',
+  amountMinor: 'amountMinor',
+  currency: 'currency',
+  invoiceId: 'invoiceId',
+  providerPaymentId: 'providerPaymentId',
+  description: 'description',
+  successUrl: 'successUrl',
+  failUrl: 'failUrl',
+  paidAt: 'paidAt',
+  rawPayloadJson: 'rawPayloadJson',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.PhotoProfileScalarFieldEnum = {
@@ -199,6 +267,9 @@ exports.Prisma.PromptTemplateScalarFieldEnum = {
   promptSkeleton: 'promptSkeleton',
   previewKey: 'previewKey',
   categoryId: 'categoryId',
+  priceMinor: 'priceMinor',
+  currency: 'currency',
+  isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -218,6 +289,10 @@ exports.Prisma.AppConfigScalarFieldEnum = {
   baseGenerationPrompt: 'baseGenerationPrompt',
   shortPromptMaxChars: 'shortPromptMaxChars',
   shortPromptMaxWords: 'shortPromptMaxWords',
+  billingEnabled: 'billingEnabled',
+  textGenerationPriceMinor: 'textGenerationPriceMinor',
+  photoGenerationPriceMinor: 'photoGenerationPriceMinor',
+  currency: 'currency',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -230,6 +305,11 @@ exports.Prisma.GenerationRequestScalarFieldEnum = {
   templateId: 'templateId',
   referencePhotoKey: 'referencePhotoKey',
   status: 'status',
+  billingStatus: 'billingStatus',
+  pricingType: 'pricingType',
+  priceMinor: 'priceMinor',
+  currency: 'currency',
+  pricingSnapshotJson: 'pricingSnapshotJson',
   errorMessage: 'errorMessage',
   jobId: 'jobId',
   createdAt: 'createdAt',
@@ -251,9 +331,20 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
 exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
 };
 
 exports.Prisma.NullsOrder = {
@@ -270,11 +361,65 @@ exports.UserStatus = exports.$Enums.UserStatus = {
   BLOCKED: 'BLOCKED'
 };
 
+exports.CurrencyCode = exports.$Enums.CurrencyCode = {
+  RUB: 'RUB'
+};
+
+exports.BillingEntryType = exports.$Enums.BillingEntryType = {
+  TOPUP_CREDIT: 'TOPUP_CREDIT',
+  GENERATION_RESERVE: 'GENERATION_RESERVE',
+  GENERATION_CAPTURE: 'GENERATION_CAPTURE',
+  GENERATION_RELEASE: 'GENERATION_RELEASE',
+  GENERATION_REFUND: 'GENERATION_REFUND',
+  MANUAL_ADJUSTMENT: 'MANUAL_ADJUSTMENT'
+};
+
+exports.BillingEntryStatus = exports.$Enums.BillingEntryStatus = {
+  POSTED: 'POSTED',
+  VOIDED: 'VOIDED'
+};
+
+exports.PaymentProvider = exports.$Enums.PaymentProvider = {
+  ROBOKASSA: 'ROBOKASSA'
+};
+
+exports.PaymentType = exports.$Enums.PaymentType = {
+  TOPUP: 'TOPUP'
+};
+
+exports.PaymentStatus = exports.$Enums.PaymentStatus = {
+  CREATED: 'CREATED',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELED: 'CANCELED',
+  EXPIRED: 'EXPIRED'
+};
+
+exports.GenerationBillingStatus = exports.$Enums.GenerationBillingStatus = {
+  NONE: 'NONE',
+  RESERVED: 'RESERVED',
+  CAPTURED: 'CAPTURED',
+  RELEASED: 'RELEASED',
+  REFUNDED: 'REFUNDED'
+};
+
+exports.GenerationPricingType = exports.$Enums.GenerationPricingType = {
+  TEXT: 'TEXT',
+  TEMPLATE: 'TEMPLATE',
+  REFERENCE: 'REFERENCE'
+};
+
 exports.Prisma.ModelName = {
+  AuthRateLimit: 'AuthRateLimit',
+  WorkerHeartbeat: 'WorkerHeartbeat',
   User: 'User',
   Session: 'Session',
   EmailVerificationToken: 'EmailVerificationToken',
   PasswordResetToken: 'PasswordResetToken',
+  BillingAccount: 'BillingAccount',
+  BillingLedgerEntry: 'BillingLedgerEntry',
+  Payment: 'Payment',
   PhotoProfile: 'PhotoProfile',
   ProfileShot: 'ProfileShot',
   Category: 'Category',

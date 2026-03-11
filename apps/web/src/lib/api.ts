@@ -161,7 +161,14 @@ export async function uploadReferencePhoto(
 
 export async function createGenerationRequest(
   input: CreateGenerationInput
-): Promise<{ accepted: boolean; jobId: string; requestId: string }> {
+): Promise<{
+  accepted: boolean;
+  jobId: string;
+  requestId: string;
+  amountMinor: number;
+  currency: "RUB";
+  billingStatus: "NONE" | "RESERVED" | "CAPTURED" | "RELEASED" | "REFUNDED";
+}> {
   const payload = createGenerationInputSchema.parse(input);
   const response = await fetch(`${API_URL}${apiRoutes.generations}`, {
     method: "POST",
@@ -183,5 +190,8 @@ export async function createGenerationRequest(
     accepted: boolean;
     jobId: string;
     requestId: string;
+    amountMinor: number;
+    currency: "RUB";
+    billingStatus: "NONE" | "RESERVED" | "CAPTURED" | "RELEASED" | "REFUNDED";
   };
 }

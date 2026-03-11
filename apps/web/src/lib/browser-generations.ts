@@ -26,7 +26,7 @@ export function listBrowserGenerations(): BrowserGenerationRecord[] {
       return [];
     }
 
-    return parsed.filter(isBrowserGenerationRecord);
+    return parsed.filter(isBrowserGenerationRecord).map(withBillingDefaults);
   } catch {
     return [];
   }
@@ -62,4 +62,16 @@ function isBrowserGenerationRecord(value: unknown): value is BrowserGenerationRe
     typeof candidate.subtitle === "string" &&
     typeof candidate.createdAt === "string"
   );
+}
+
+function withBillingDefaults(
+  generation: Omit<BrowserGenerationRecord, "billingStatus" | "priceMinor" | "currency"> &
+    Partial<Pick<BrowserGenerationRecord, "billingStatus" | "priceMinor" | "currency">>
+): BrowserGenerationRecord {
+  return {
+    ...generation,
+    billingStatus: generation.billingStatus ?? "NONE",
+    priceMinor: generation.priceMinor ?? 0,
+    currency: generation.currency ?? "RUB",
+  };
 }

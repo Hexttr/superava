@@ -3,6 +3,10 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+generator workerClient {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -16,6 +20,83 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   BLOCKED
+}
+
+enum CurrencyCode {
+  RUB
+}
+
+enum BillingEntryType {
+  TOPUP_CREDIT
+  GENERATION_RESERVE
+  GENERATION_CAPTURE
+  GENERATION_RELEASE
+  GENERATION_REFUND
+  MANUAL_ADJUSTMENT
+}
+
+enum BillingEntryStatus {
+  POSTED
+  VOIDED
+}
+
+enum PaymentProvider {
+  ROBOKASSA
+}
+
+enum PaymentType {
+  TOPUP
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  EXPIRED
+}
+
+enum GenerationBillingStatus {
+  NONE
+  RESERVED
+  CAPTURED
+  RELEASED
+  REFUNDED
+}
+
+enum GenerationPricingType {
+  TEXT
+  TEMPLATE
+  REFERENCE
+}
+
+model AuthRateLimit {
+  key            String   @id
+  scope          String
+  attempts       Int
+  firstAttemptAt DateTime
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([scope])
+  @@index([expiresAt])
+}
+
+model WorkerHeartbeat {
+  workerId     String   @id
+  service      String
+  status       String
+  startedAt    DateTime
+  heartbeatAt  DateTime
+  lastError    String?
+  metadataJson Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([service])
+  @@index([heartbeatAt])
 }
 
 model User {
@@ -34,6 +115,9 @@ model User {
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
+  billingAccount          BillingAccount?
+  billingEntries          BillingLedgerEntry[]
+  payments                Payment[]
 }
 
 model Session {
@@ -74,6 +158,71 @@ model PasswordResetToken {
   @@index([token])
 }
 
+model BillingAccount {
+  id            String               @id @default(cuid())
+  userId        String               @unique
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency      CurrencyCode         @default(RUB)
+  balanceMinor  Int                  @default(0)
+  reservedMinor Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  ledgerEntries BillingLedgerEntry[]
+  payments      Payment[]
+}
+
+model BillingLedgerEntry {
+  id                  String             @id @default(cuid())
+  accountId           String
+  account             BillingAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                BillingEntryType
+  status              BillingEntryStatus @default(POSTED)
+  amountMinor         Int
+  currency            CurrencyCode       @default(RUB)
+  generationRequestId String?
+  generationRequest   GenerationRequest? @relation(fields: [generationRequestId], references: [id], onDelete: SetNull)
+  paymentId           String?
+  payment             Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  idempotencyKey      String             @unique
+  description         String
+  metadataJson        Json?
+  createdAt           DateTime           @default(now())
+
+  @@index([accountId])
+  @@index([userId])
+  @@index([generationRequestId])
+  @@index([paymentId])
+}
+
+model Payment {
+  id                String               @id @default(cuid())
+  accountId         String
+  account           BillingAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          PaymentProvider
+  type              PaymentType
+  status            PaymentStatus        @default(CREATED)
+  amountMinor       Int
+  currency          CurrencyCode         @default(RUB)
+  invoiceId         String               @unique
+  providerPaymentId String?
+  description       String
+  successUrl        String?
+  failUrl           String?
+  paidAt            DateTime?
+  rawPayloadJson    Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  ledgerEntries     BillingLedgerEntry[]
+
+  @@index([accountId])
+  @@index([userId])
+  @@index([status])
+}
+
 model PhotoProfile {
   id          String        @id @default(cuid())
   userId      String        @unique
@@ -110,19 +259,22 @@ model Category {
 }
 
 model PromptTemplate {
-  id             String    @id @default(cuid())
-  slug           String    @unique
+  id             String       @id @default(cuid())
+  slug           String       @unique
   title          String
   subtitle       String
   group          String // vip | holiday (legacy)
   previewLabel   String
   description    String
-  promptSkeleton String    @default("")
+  promptSkeleton String       @default("")
   previewKey     String?
   categoryId     String?
-  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  category       Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  priceMinor     Int          @default(0)
+  currency       CurrencyCode @default(RUB)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 
   @@index([categoryId])
 }
@@ -138,31 +290,42 @@ model PromptPart {
 }
 
 model AppConfig {
-  id                   String   @id
-  baseGenerationPrompt String
-  shortPromptMaxChars  Int      @default(80)
-  shortPromptMaxWords  Int      @default(6)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                        String       @id
+  baseGenerationPrompt      String
+  shortPromptMaxChars       Int          @default(80)
+  shortPromptMaxWords       Int          @default(6)
+  billingEnabled            Boolean      @default(false)
+  textGenerationPriceMinor  Int          @default(0)
+  photoGenerationPriceMinor Int          @default(0)
+  currency                  CurrencyCode @default(RUB)
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
 }
 
 model GenerationRequest {
-  id                String            @id @default(cuid())
-  userId            String
-  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  mode              String // free | template | reference
-  prompt            String?
-  templateId        String?
-  referencePhotoKey String?
-  status            String            @default("queued") // queued | processing | finalizing | completed | failed
-  errorMessage      String?
-  jobId             String? // pg-boss job id
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  assets            GenerationAsset[]
+  id                  String                  @id @default(cuid())
+  userId              String
+  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode                String // free | template | reference
+  prompt              String?
+  templateId          String?
+  referencePhotoKey   String?
+  status              String                  @default("queued") // queued | processing | finalizing | completed | failed
+  billingStatus       GenerationBillingStatus @default(NONE)
+  pricingType         GenerationPricingType?
+  priceMinor          Int                     @default(0)
+  currency            CurrencyCode            @default(RUB)
+  pricingSnapshotJson Json?
+  errorMessage        String?
+  jobId               String? // pg-boss job id
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  assets              GenerationAsset[]
+  billingEntries      BillingLedgerEntry[]
 
   @@index([userId])
   @@index([status])
+  @@index([billingStatus])
 }
 
 model GenerationAsset {

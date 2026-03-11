@@ -14,6 +14,8 @@ export function CreateTemplateButton({ categories }: { categories: Category[] })
   const [description, setDescription] = useState("");
   const [promptSkeleton, setPromptSkeleton] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [priceRub, setPriceRub] = useState("0");
+  const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +33,8 @@ export function CreateTemplateButton({ categories }: { categories: Category[] })
         group: "holiday",
         previewLabel: title.slice(0, 8),
         categoryId: categoryId || null,
+        priceMinor: Math.max(0, Math.round(Number(priceRub || "0") * 100)),
+        isActive,
       });
       setSlug("");
       setTitle("");
@@ -38,6 +42,8 @@ export function CreateTemplateButton({ categories }: { categories: Category[] })
       setDescription("");
       setPromptSkeleton("");
       setCategoryId("");
+      setPriceRub("0");
+      setIsActive(true);
       setShow(false);
       router.refresh();
     } catch (err) {
@@ -110,6 +116,23 @@ export function CreateTemplateButton({ categories }: { categories: Category[] })
           </option>
         ))}
       </select>
+      <input
+        type="number"
+        min="0"
+        step="1"
+        value={priceRub}
+        onChange={(e) => setPriceRub(e.target.value)}
+        placeholder="Цена, RUB"
+        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-slate-500"
+      />
+      <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={isActive}
+          onChange={(e) => setIsActive(e.target.checked)}
+        />
+        <span>Шаблон активен</span>
+      </label>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex gap-2">
         <button

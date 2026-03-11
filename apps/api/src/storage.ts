@@ -13,6 +13,11 @@ const region = process.env.S3_REGION ?? "us-east-1";
 const bucket = process.env.S3_BUCKET ?? "superava-assets";
 const accessKey = process.env.S3_ACCESS_KEY ?? "superava";
 const secretKey = process.env.S3_SECRET_KEY ?? "superavasecret";
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction && (accessKey === "superava" || secretKey === "superavasecret")) {
+  throw new Error("S3_ACCESS_KEY and S3_SECRET_KEY must be configured in production");
+}
 
 const client = new S3Client({
   region,
@@ -38,6 +43,14 @@ export async function ensureBucket(): Promise<void> {
       })
     );
   }
+}
+
+export async function checkBucketAccess(): Promise<void> {
+  await client.send(
+    new HeadBucketCommand({
+      Bucket: bucket,
+    })
+  );
 }
 
 export async function putObject(

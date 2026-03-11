@@ -2,6 +2,8 @@ import {
   adminUserSchema,
   apiRoutes,
   authUserSchema,
+  billingAccountSchema,
+  billingPricingSchema,
   generationPromptConfigSchema,
   generationRecordSchema,
   photoProfileSchema,
@@ -9,6 +11,8 @@ import {
   promptTemplateSchema,
   type AuthUser,
   type AdminUser,
+  type BillingAccount,
+  type BillingPricing,
   type GenerationPromptConfig,
   type GenerationRecord,
   type PhotoProfile,
@@ -17,7 +21,7 @@ import {
 } from "@superava/shared";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { Category, PromptPart, PromptTemplateAdmin } from "@/lib/admin-api";
+import type { AdminAppConfig, Category, PromptPart, PromptTemplateAdmin } from "@/lib/admin-api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
@@ -50,6 +54,21 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   }
 
   return parseJson(response, (value) => authUserSchema.parse(value));
+}
+
+export async function getBillingMe(): Promise<BillingAccount | null> {
+  const response = await serverFetch("/api/v1/billing/me");
+
+  if (response.status === 401) {
+    return null;
+  }
+
+  return parseJson(response, (value) => billingAccountSchema.parse(value));
+}
+
+export async function getBillingPricing(): Promise<BillingPricing> {
+  const response = await serverFetch("/api/v1/billing/pricing");
+  return parseJson(response, (value) => billingPricingSchema.parse(value));
 }
 
 export async function requireAuthUser(): Promise<AuthUser> {
@@ -207,4 +226,17 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
     const parsed = value as { items?: unknown[] };
     return (parsed.items ?? []).map((item) => adminUserSchema.parse(item));
   });
+}
+
+export async function getAdminAppConfig(): Promise<AdminAppConfig> {
+  const response = await serverFetch("/api/v1/admin/app-config");
+
+  if (response.status === 401) {
+    redirect("/login");
+  }
+  if (response.status === 403) {
+    redirect("/");
+  }
+
+  return parseJson(response, (value) => value as AdminAppConfig);
 }

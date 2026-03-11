@@ -93,6 +93,28 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
+exports.Prisma.AuthRateLimitScalarFieldEnum = {
+  key: 'key',
+  scope: 'scope',
+  attempts: 'attempts',
+  firstAttemptAt: 'firstAttemptAt',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.WorkerHeartbeatScalarFieldEnum = {
+  workerId: 'workerId',
+  service: 'service',
+  status: 'status',
+  startedAt: 'startedAt',
+  heartbeatAt: 'heartbeatAt',
+  lastError: 'lastError',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   createdAt: 'createdAt',
@@ -130,6 +152,52 @@ exports.Prisma.PasswordResetTokenScalarFieldEnum = {
   expiresAt: 'expiresAt',
   consumedAt: 'consumedAt',
   createdAt: 'createdAt'
+};
+
+exports.Prisma.BillingAccountScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  currency: 'currency',
+  balanceMinor: 'balanceMinor',
+  reservedMinor: 'reservedMinor',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.BillingLedgerEntryScalarFieldEnum = {
+  id: 'id',
+  accountId: 'accountId',
+  userId: 'userId',
+  type: 'type',
+  status: 'status',
+  amountMinor: 'amountMinor',
+  currency: 'currency',
+  generationRequestId: 'generationRequestId',
+  paymentId: 'paymentId',
+  idempotencyKey: 'idempotencyKey',
+  description: 'description',
+  metadataJson: 'metadataJson',
+  createdAt: 'createdAt'
+};
+
+exports.Prisma.PaymentScalarFieldEnum = {
+  id: 'id',
+  accountId: 'accountId',
+  userId: 'userId',
+  provider: 'provider',
+  type: 'type',
+  status: 'status',
+  amountMinor: 'amountMinor',
+  currency: 'currency',
+  invoiceId: 'invoiceId',
+  providerPaymentId: 'providerPaymentId',
+  description: 'description',
+  successUrl: 'successUrl',
+  failUrl: 'failUrl',
+  paidAt: 'paidAt',
+  rawPayloadJson: 'rawPayloadJson',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.PhotoProfileScalarFieldEnum = {
@@ -171,6 +239,9 @@ exports.Prisma.PromptTemplateScalarFieldEnum = {
   promptSkeleton: 'promptSkeleton',
   previewKey: 'previewKey',
   categoryId: 'categoryId',
+  priceMinor: 'priceMinor',
+  currency: 'currency',
+  isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -190,6 +261,10 @@ exports.Prisma.AppConfigScalarFieldEnum = {
   baseGenerationPrompt: 'baseGenerationPrompt',
   shortPromptMaxChars: 'shortPromptMaxChars',
   shortPromptMaxWords: 'shortPromptMaxWords',
+  billingEnabled: 'billingEnabled',
+  textGenerationPriceMinor: 'textGenerationPriceMinor',
+  photoGenerationPriceMinor: 'photoGenerationPriceMinor',
+  currency: 'currency',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -202,6 +277,11 @@ exports.Prisma.GenerationRequestScalarFieldEnum = {
   templateId: 'templateId',
   referencePhotoKey: 'referencePhotoKey',
   status: 'status',
+  billingStatus: 'billingStatus',
+  pricingType: 'pricingType',
+  priceMinor: 'priceMinor',
+  currency: 'currency',
+  pricingSnapshotJson: 'pricingSnapshotJson',
   errorMessage: 'errorMessage',
   jobId: 'jobId',
   createdAt: 'createdAt',
@@ -223,9 +303,20 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
 exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
 };
 
 exports.Prisma.NullsOrder = {
@@ -242,11 +333,65 @@ exports.UserStatus = exports.$Enums.UserStatus = {
   BLOCKED: 'BLOCKED'
 };
 
+exports.CurrencyCode = exports.$Enums.CurrencyCode = {
+  RUB: 'RUB'
+};
+
+exports.BillingEntryType = exports.$Enums.BillingEntryType = {
+  TOPUP_CREDIT: 'TOPUP_CREDIT',
+  GENERATION_RESERVE: 'GENERATION_RESERVE',
+  GENERATION_CAPTURE: 'GENERATION_CAPTURE',
+  GENERATION_RELEASE: 'GENERATION_RELEASE',
+  GENERATION_REFUND: 'GENERATION_REFUND',
+  MANUAL_ADJUSTMENT: 'MANUAL_ADJUSTMENT'
+};
+
+exports.BillingEntryStatus = exports.$Enums.BillingEntryStatus = {
+  POSTED: 'POSTED',
+  VOIDED: 'VOIDED'
+};
+
+exports.PaymentProvider = exports.$Enums.PaymentProvider = {
+  ROBOKASSA: 'ROBOKASSA'
+};
+
+exports.PaymentType = exports.$Enums.PaymentType = {
+  TOPUP: 'TOPUP'
+};
+
+exports.PaymentStatus = exports.$Enums.PaymentStatus = {
+  CREATED: 'CREATED',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  FAILED: 'FAILED',
+  CANCELED: 'CANCELED',
+  EXPIRED: 'EXPIRED'
+};
+
+exports.GenerationBillingStatus = exports.$Enums.GenerationBillingStatus = {
+  NONE: 'NONE',
+  RESERVED: 'RESERVED',
+  CAPTURED: 'CAPTURED',
+  RELEASED: 'RELEASED',
+  REFUNDED: 'REFUNDED'
+};
+
+exports.GenerationPricingType = exports.$Enums.GenerationPricingType = {
+  TEXT: 'TEXT',
+  TEMPLATE: 'TEMPLATE',
+  REFERENCE: 'REFERENCE'
+};
+
 exports.Prisma.ModelName = {
+  AuthRateLimit: 'AuthRateLimit',
+  WorkerHeartbeat: 'WorkerHeartbeat',
   User: 'User',
   Session: 'Session',
   EmailVerificationToken: 'EmailVerificationToken',
   PasswordResetToken: 'PasswordResetToken',
+  BillingAccount: 'BillingAccount',
+  BillingLedgerEntry: 'BillingLedgerEntry',
+  Payment: 'Payment',
   PhotoProfile: 'PhotoProfile',
   ProfileShot: 'ProfileShot',
   Category: 'Category',
@@ -285,7 +430,7 @@ const config = {
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": "../../../.env",
+    "rootEnvPath": null,
     "schemaEnvPath": "../../../.env"
   },
   "relativePath": "../../../prisma",
@@ -304,13 +449,13 @@ const config = {
       }
     }
   },
-  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum UserRole {\n  USER\n  ADMIN\n}\n\nenum UserStatus {\n  ACTIVE\n  BLOCKED\n}\n\nmodel User {\n  id                      String                   @id @default(cuid())\n  createdAt               DateTime                 @default(now())\n  updatedAt               DateTime                 @updatedAt\n  email                   String?                  @unique\n  name                    String?\n  avatarUrl               String?\n  passwordHash            String?\n  emailVerified           Boolean                  @default(false)\n  role                    UserRole                 @default(USER)\n  status                  UserStatus               @default(ACTIVE)\n  profiles                PhotoProfile[]\n  generations             GenerationRequest[]\n  sessions                Session[]\n  emailVerificationTokens EmailVerificationToken[]\n  passwordResetTokens     PasswordResetToken[]\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token     String   @unique\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel EmailVerificationToken {\n  id         String    @id @default(cuid())\n  userId     String\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token      String    @unique\n  expiresAt  DateTime\n  consumedAt DateTime?\n  createdAt  DateTime  @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel PasswordResetToken {\n  id         String    @id @default(cuid())\n  userId     String\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token      String    @unique\n  expiresAt  DateTime\n  consumedAt DateTime?\n  createdAt  DateTime  @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel PhotoProfile {\n  id          String        @id @default(cuid())\n  userId      String        @unique\n  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)\n  displayName String        @default(\"\")\n  createdAt   DateTime      @default(now())\n  updatedAt   DateTime      @updatedAt\n  shots       ProfileShot[]\n}\n\nmodel ProfileShot {\n  id         String       @id @default(cuid())\n  profileId  String\n  profile    PhotoProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)\n  shotType   String // front_neutral | front_smile | left_45 | right_45 | left_profile | right_profile\n  storageKey String? // S3/MinIO key for canonical processed image\n  previewKey String? // S3/MinIO key for thumbnail\n  status     String       @default(\"missing\") // missing | uploaded | approved\n  createdAt  DateTime     @default(now())\n  updatedAt  DateTime     @updatedAt\n\n  @@unique([profileId, shotType])\n  @@index([profileId])\n}\n\nmodel Category {\n  id         String           @id @default(cuid())\n  name       String\n  previewKey String?\n  sortOrder  Int              @default(0)\n  createdAt  DateTime         @default(now())\n  updatedAt  DateTime         @updatedAt\n  templates  PromptTemplate[]\n}\n\nmodel PromptTemplate {\n  id             String    @id @default(cuid())\n  slug           String    @unique\n  title          String\n  subtitle       String\n  group          String // vip | holiday (legacy)\n  previewLabel   String\n  description    String\n  promptSkeleton String    @default(\"\")\n  previewKey     String?\n  categoryId     String?\n  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)\n  createdAt      DateTime  @default(now())\n  updatedAt      DateTime  @updatedAt\n\n  @@index([categoryId])\n}\n\nmodel PromptPart {\n  id        String   @id @default(cuid())\n  key       String   @unique\n  label     String\n  value     String\n  sortOrder Int      @default(0)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel AppConfig {\n  id                   String   @id\n  baseGenerationPrompt String\n  shortPromptMaxChars  Int      @default(80)\n  shortPromptMaxWords  Int      @default(6)\n  createdAt            DateTime @default(now())\n  updatedAt            DateTime @updatedAt\n}\n\nmodel GenerationRequest {\n  id                String            @id @default(cuid())\n  userId            String\n  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)\n  mode              String // free | template | reference\n  prompt            String?\n  templateId        String?\n  referencePhotoKey String?\n  status            String            @default(\"queued\") // queued | processing | finalizing | completed | failed\n  errorMessage      String?\n  jobId             String? // pg-boss job id\n  createdAt         DateTime          @default(now())\n  updatedAt         DateTime          @updatedAt\n  assets            GenerationAsset[]\n\n  @@index([userId])\n  @@index([status])\n}\n\nmodel GenerationAsset {\n  id         String            @id @default(cuid())\n  requestId  String\n  request    GenerationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)\n  storageKey String\n  mimeType   String            @default(\"image/png\")\n  width      Int?\n  height     Int?\n  createdAt  DateTime          @default(now())\n\n  @@index([requestId])\n}\n",
-  "inlineSchemaHash": "7452f550ea101f9c8cc4a61dc98b72612cb85fa8b8eeb9dd1fd613291111fb2b",
+  "inlineSchema": "generator client {\n  provider = \"prisma-client-js\"\n  output   = \"../src/generated/prisma\"\n}\n\ngenerator workerClient {\n  provider = \"prisma-client-js\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum UserRole {\n  USER\n  ADMIN\n}\n\nenum UserStatus {\n  ACTIVE\n  BLOCKED\n}\n\nenum CurrencyCode {\n  RUB\n}\n\nenum BillingEntryType {\n  TOPUP_CREDIT\n  GENERATION_RESERVE\n  GENERATION_CAPTURE\n  GENERATION_RELEASE\n  GENERATION_REFUND\n  MANUAL_ADJUSTMENT\n}\n\nenum BillingEntryStatus {\n  POSTED\n  VOIDED\n}\n\nenum PaymentProvider {\n  ROBOKASSA\n}\n\nenum PaymentType {\n  TOPUP\n}\n\nenum PaymentStatus {\n  CREATED\n  PENDING\n  PAID\n  FAILED\n  CANCELED\n  EXPIRED\n}\n\nenum GenerationBillingStatus {\n  NONE\n  RESERVED\n  CAPTURED\n  RELEASED\n  REFUNDED\n}\n\nenum GenerationPricingType {\n  TEXT\n  TEMPLATE\n  REFERENCE\n}\n\nmodel AuthRateLimit {\n  key            String   @id\n  scope          String\n  attempts       Int\n  firstAttemptAt DateTime\n  expiresAt      DateTime\n  createdAt      DateTime @default(now())\n  updatedAt      DateTime @updatedAt\n\n  @@index([scope])\n  @@index([expiresAt])\n}\n\nmodel WorkerHeartbeat {\n  workerId     String   @id\n  service      String\n  status       String\n  startedAt    DateTime\n  heartbeatAt  DateTime\n  lastError    String?\n  metadataJson Json?\n  createdAt    DateTime @default(now())\n  updatedAt    DateTime @updatedAt\n\n  @@index([service])\n  @@index([heartbeatAt])\n}\n\nmodel User {\n  id                      String                   @id @default(cuid())\n  createdAt               DateTime                 @default(now())\n  updatedAt               DateTime                 @updatedAt\n  email                   String?                  @unique\n  name                    String?\n  avatarUrl               String?\n  passwordHash            String?\n  emailVerified           Boolean                  @default(false)\n  role                    UserRole                 @default(USER)\n  status                  UserStatus               @default(ACTIVE)\n  profiles                PhotoProfile[]\n  generations             GenerationRequest[]\n  sessions                Session[]\n  emailVerificationTokens EmailVerificationToken[]\n  passwordResetTokens     PasswordResetToken[]\n  billingAccount          BillingAccount?\n  billingEntries          BillingLedgerEntry[]\n  payments                Payment[]\n}\n\nmodel Session {\n  id        String   @id @default(cuid())\n  userId    String\n  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token     String   @unique\n  expiresAt DateTime\n  createdAt DateTime @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel EmailVerificationToken {\n  id         String    @id @default(cuid())\n  userId     String\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token      String    @unique\n  expiresAt  DateTime\n  consumedAt DateTime?\n  createdAt  DateTime  @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel PasswordResetToken {\n  id         String    @id @default(cuid())\n  userId     String\n  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)\n  token      String    @unique\n  expiresAt  DateTime\n  consumedAt DateTime?\n  createdAt  DateTime  @default(now())\n\n  @@index([userId])\n  @@index([token])\n}\n\nmodel BillingAccount {\n  id            String               @id @default(cuid())\n  userId        String               @unique\n  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)\n  currency      CurrencyCode         @default(RUB)\n  balanceMinor  Int                  @default(0)\n  reservedMinor Int                  @default(0)\n  createdAt     DateTime             @default(now())\n  updatedAt     DateTime             @updatedAt\n  ledgerEntries BillingLedgerEntry[]\n  payments      Payment[]\n}\n\nmodel BillingLedgerEntry {\n  id                  String             @id @default(cuid())\n  accountId           String\n  account             BillingAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)\n  userId              String\n  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)\n  type                BillingEntryType\n  status              BillingEntryStatus @default(POSTED)\n  amountMinor         Int\n  currency            CurrencyCode       @default(RUB)\n  generationRequestId String?\n  generationRequest   GenerationRequest? @relation(fields: [generationRequestId], references: [id], onDelete: SetNull)\n  paymentId           String?\n  payment             Payment?           @relation(fields: [paymentId], references: [id], onDelete: SetNull)\n  idempotencyKey      String             @unique\n  description         String\n  metadataJson        Json?\n  createdAt           DateTime           @default(now())\n\n  @@index([accountId])\n  @@index([userId])\n  @@index([generationRequestId])\n  @@index([paymentId])\n}\n\nmodel Payment {\n  id                String               @id @default(cuid())\n  accountId         String\n  account           BillingAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)\n  userId            String\n  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)\n  provider          PaymentProvider\n  type              PaymentType\n  status            PaymentStatus        @default(CREATED)\n  amountMinor       Int\n  currency          CurrencyCode         @default(RUB)\n  invoiceId         String               @unique\n  providerPaymentId String?\n  description       String\n  successUrl        String?\n  failUrl           String?\n  paidAt            DateTime?\n  rawPayloadJson    Json?\n  createdAt         DateTime             @default(now())\n  updatedAt         DateTime             @updatedAt\n  ledgerEntries     BillingLedgerEntry[]\n\n  @@index([accountId])\n  @@index([userId])\n  @@index([status])\n}\n\nmodel PhotoProfile {\n  id          String        @id @default(cuid())\n  userId      String        @unique\n  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)\n  displayName String        @default(\"\")\n  createdAt   DateTime      @default(now())\n  updatedAt   DateTime      @updatedAt\n  shots       ProfileShot[]\n}\n\nmodel ProfileShot {\n  id         String       @id @default(cuid())\n  profileId  String\n  profile    PhotoProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)\n  shotType   String // front_neutral | front_smile | left_45 | right_45 | left_profile | right_profile\n  storageKey String? // S3/MinIO key for canonical processed image\n  previewKey String? // S3/MinIO key for thumbnail\n  status     String       @default(\"missing\") // missing | uploaded | approved\n  createdAt  DateTime     @default(now())\n  updatedAt  DateTime     @updatedAt\n\n  @@unique([profileId, shotType])\n  @@index([profileId])\n}\n\nmodel Category {\n  id         String           @id @default(cuid())\n  name       String\n  previewKey String?\n  sortOrder  Int              @default(0)\n  createdAt  DateTime         @default(now())\n  updatedAt  DateTime         @updatedAt\n  templates  PromptTemplate[]\n}\n\nmodel PromptTemplate {\n  id             String       @id @default(cuid())\n  slug           String       @unique\n  title          String\n  subtitle       String\n  group          String // vip | holiday (legacy)\n  previewLabel   String\n  description    String\n  promptSkeleton String       @default(\"\")\n  previewKey     String?\n  categoryId     String?\n  category       Category?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)\n  priceMinor     Int          @default(0)\n  currency       CurrencyCode @default(RUB)\n  isActive       Boolean      @default(true)\n  createdAt      DateTime     @default(now())\n  updatedAt      DateTime     @updatedAt\n\n  @@index([categoryId])\n}\n\nmodel PromptPart {\n  id        String   @id @default(cuid())\n  key       String   @unique\n  label     String\n  value     String\n  sortOrder Int      @default(0)\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n}\n\nmodel AppConfig {\n  id                        String       @id\n  baseGenerationPrompt      String\n  shortPromptMaxChars       Int          @default(80)\n  shortPromptMaxWords       Int          @default(6)\n  billingEnabled            Boolean      @default(false)\n  textGenerationPriceMinor  Int          @default(0)\n  photoGenerationPriceMinor Int          @default(0)\n  currency                  CurrencyCode @default(RUB)\n  createdAt                 DateTime     @default(now())\n  updatedAt                 DateTime     @updatedAt\n}\n\nmodel GenerationRequest {\n  id                  String                  @id @default(cuid())\n  userId              String\n  user                User                    @relation(fields: [userId], references: [id], onDelete: Cascade)\n  mode                String // free | template | reference\n  prompt              String?\n  templateId          String?\n  referencePhotoKey   String?\n  status              String                  @default(\"queued\") // queued | processing | finalizing | completed | failed\n  billingStatus       GenerationBillingStatus @default(NONE)\n  pricingType         GenerationPricingType?\n  priceMinor          Int                     @default(0)\n  currency            CurrencyCode            @default(RUB)\n  pricingSnapshotJson Json?\n  errorMessage        String?\n  jobId               String? // pg-boss job id\n  createdAt           DateTime                @default(now())\n  updatedAt           DateTime                @updatedAt\n  assets              GenerationAsset[]\n  billingEntries      BillingLedgerEntry[]\n\n  @@index([userId])\n  @@index([status])\n  @@index([billingStatus])\n}\n\nmodel GenerationAsset {\n  id         String            @id @default(cuid())\n  requestId  String\n  request    GenerationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)\n  storageKey String\n  mimeType   String            @default(\"image/png\")\n  width      Int?\n  height     Int?\n  createdAt  DateTime          @default(now())\n\n  @@index([requestId])\n}\n",
+  "inlineSchemaHash": "a6bc5334f7518d7ae6a912c4a981d4729c2f0dd01baacc3d182615aeed9d60c9",
   "copyEngine": true
 }
 config.dirname = '/'
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"avatarUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"passwordHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"emailVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"UserRole\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"UserStatus\"},{\"name\":\"profiles\",\"kind\":\"object\",\"type\":\"PhotoProfile\",\"relationName\":\"PhotoProfileToUser\"},{\"name\":\"generations\",\"kind\":\"object\",\"type\":\"GenerationRequest\",\"relationName\":\"GenerationRequestToUser\"},{\"name\":\"sessions\",\"kind\":\"object\",\"type\":\"Session\",\"relationName\":\"SessionToUser\"},{\"name\":\"emailVerificationTokens\",\"kind\":\"object\",\"type\":\"EmailVerificationToken\",\"relationName\":\"EmailVerificationTokenToUser\"},{\"name\":\"passwordResetTokens\",\"kind\":\"object\",\"type\":\"PasswordResetToken\",\"relationName\":\"PasswordResetTokenToUser\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SessionToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"EmailVerificationToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"EmailVerificationTokenToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"consumedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PasswordResetToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PasswordResetTokenToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"consumedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PhotoProfile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PhotoProfileToUser\"},{\"name\":\"displayName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"shots\",\"kind\":\"object\",\"type\":\"ProfileShot\",\"relationName\":\"PhotoProfileToProfileShot\"}],\"dbName\":null},\"ProfileShot\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"profileId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"profile\",\"kind\":\"object\",\"type\":\"PhotoProfile\",\"relationName\":\"PhotoProfileToProfileShot\"},{\"name\":\"shotType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"storageKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Category\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sortOrder\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"templates\",\"kind\":\"object\",\"type\":\"PromptTemplate\",\"relationName\":\"CategoryToPromptTemplate\"}],\"dbName\":null},\"PromptTemplate\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"slug\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"subtitle\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"group\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewLabel\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"promptSkeleton\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"categoryId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"category\",\"kind\":\"object\",\"type\":\"Category\",\"relationName\":\"CategoryToPromptTemplate\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PromptPart\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"key\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"label\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"value\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sortOrder\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"AppConfig\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"baseGenerationPrompt\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"shortPromptMaxChars\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"shortPromptMaxWords\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"GenerationRequest\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"GenerationRequestToUser\"},{\"name\":\"mode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"prompt\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"templateId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"referencePhotoKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"errorMessage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"jobId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"assets\",\"kind\":\"object\",\"type\":\"GenerationAsset\",\"relationName\":\"GenerationAssetToGenerationRequest\"}],\"dbName\":null},\"GenerationAsset\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"requestId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"request\",\"kind\":\"object\",\"type\":\"GenerationRequest\",\"relationName\":\"GenerationAssetToGenerationRequest\"},{\"name\":\"storageKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"mimeType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"width\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"height\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"AuthRateLimit\":{\"fields\":[{\"name\":\"key\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"scope\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"attempts\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"firstAttemptAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"WorkerHeartbeat\":{\"fields\":[{\"name\":\"workerId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"service\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"startedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"heartbeatAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"lastError\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadataJson\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"avatarUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"passwordHash\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"emailVerified\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"role\",\"kind\":\"enum\",\"type\":\"UserRole\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"UserStatus\"},{\"name\":\"profiles\",\"kind\":\"object\",\"type\":\"PhotoProfile\",\"relationName\":\"PhotoProfileToUser\"},{\"name\":\"generations\",\"kind\":\"object\",\"type\":\"GenerationRequest\",\"relationName\":\"GenerationRequestToUser\"},{\"name\":\"sessions\",\"kind\":\"object\",\"type\":\"Session\",\"relationName\":\"SessionToUser\"},{\"name\":\"emailVerificationTokens\",\"kind\":\"object\",\"type\":\"EmailVerificationToken\",\"relationName\":\"EmailVerificationTokenToUser\"},{\"name\":\"passwordResetTokens\",\"kind\":\"object\",\"type\":\"PasswordResetToken\",\"relationName\":\"PasswordResetTokenToUser\"},{\"name\":\"billingAccount\",\"kind\":\"object\",\"type\":\"BillingAccount\",\"relationName\":\"BillingAccountToUser\"},{\"name\":\"billingEntries\",\"kind\":\"object\",\"type\":\"BillingLedgerEntry\",\"relationName\":\"BillingLedgerEntryToUser\"},{\"name\":\"payments\",\"kind\":\"object\",\"type\":\"Payment\",\"relationName\":\"PaymentToUser\"}],\"dbName\":null},\"Session\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"SessionToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"EmailVerificationToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"EmailVerificationTokenToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"consumedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PasswordResetToken\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PasswordResetTokenToUser\"},{\"name\":\"token\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"expiresAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"consumedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"BillingAccount\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BillingAccountToUser\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"balanceMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"reservedMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"ledgerEntries\",\"kind\":\"object\",\"type\":\"BillingLedgerEntry\",\"relationName\":\"BillingAccountToBillingLedgerEntry\"},{\"name\":\"payments\",\"kind\":\"object\",\"type\":\"Payment\",\"relationName\":\"BillingAccountToPayment\"}],\"dbName\":null},\"BillingLedgerEntry\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"account\",\"kind\":\"object\",\"type\":\"BillingAccount\",\"relationName\":\"BillingAccountToBillingLedgerEntry\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"BillingLedgerEntryToUser\"},{\"name\":\"type\",\"kind\":\"enum\",\"type\":\"BillingEntryType\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"BillingEntryStatus\"},{\"name\":\"amountMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"generationRequestId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"generationRequest\",\"kind\":\"object\",\"type\":\"GenerationRequest\",\"relationName\":\"BillingLedgerEntryToGenerationRequest\"},{\"name\":\"paymentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"payment\",\"kind\":\"object\",\"type\":\"Payment\",\"relationName\":\"BillingLedgerEntryToPayment\"},{\"name\":\"idempotencyKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"metadataJson\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Payment\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"accountId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"account\",\"kind\":\"object\",\"type\":\"BillingAccount\",\"relationName\":\"BillingAccountToPayment\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PaymentToUser\"},{\"name\":\"provider\",\"kind\":\"enum\",\"type\":\"PaymentProvider\"},{\"name\":\"type\",\"kind\":\"enum\",\"type\":\"PaymentType\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"PaymentStatus\"},{\"name\":\"amountMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"invoiceId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"providerPaymentId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"successUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"failUrl\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"paidAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"rawPayloadJson\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"ledgerEntries\",\"kind\":\"object\",\"type\":\"BillingLedgerEntry\",\"relationName\":\"BillingLedgerEntryToPayment\"}],\"dbName\":null},\"PhotoProfile\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"PhotoProfileToUser\"},{\"name\":\"displayName\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"shots\",\"kind\":\"object\",\"type\":\"ProfileShot\",\"relationName\":\"PhotoProfileToProfileShot\"}],\"dbName\":null},\"ProfileShot\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"profileId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"profile\",\"kind\":\"object\",\"type\":\"PhotoProfile\",\"relationName\":\"PhotoProfileToProfileShot\"},{\"name\":\"shotType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"storageKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"Category\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sortOrder\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"templates\",\"kind\":\"object\",\"type\":\"PromptTemplate\",\"relationName\":\"CategoryToPromptTemplate\"}],\"dbName\":null},\"PromptTemplate\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"slug\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"title\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"subtitle\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"group\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewLabel\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"description\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"promptSkeleton\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"previewKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"categoryId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"category\",\"kind\":\"object\",\"type\":\"Category\",\"relationName\":\"CategoryToPromptTemplate\"},{\"name\":\"priceMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"isActive\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"PromptPart\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"key\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"label\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"value\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"sortOrder\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"AppConfig\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"baseGenerationPrompt\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"shortPromptMaxChars\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"shortPromptMaxWords\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"billingEnabled\",\"kind\":\"scalar\",\"type\":\"Boolean\"},{\"name\":\"textGenerationPriceMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"photoGenerationPriceMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null},\"GenerationRequest\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"userId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"user\",\"kind\":\"object\",\"type\":\"User\",\"relationName\":\"GenerationRequestToUser\"},{\"name\":\"mode\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"prompt\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"templateId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"referencePhotoKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"status\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"billingStatus\",\"kind\":\"enum\",\"type\":\"GenerationBillingStatus\"},{\"name\":\"pricingType\",\"kind\":\"enum\",\"type\":\"GenerationPricingType\"},{\"name\":\"priceMinor\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"currency\",\"kind\":\"enum\",\"type\":\"CurrencyCode\"},{\"name\":\"pricingSnapshotJson\",\"kind\":\"scalar\",\"type\":\"Json\"},{\"name\":\"errorMessage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"jobId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"assets\",\"kind\":\"object\",\"type\":\"GenerationAsset\",\"relationName\":\"GenerationAssetToGenerationRequest\"},{\"name\":\"billingEntries\",\"kind\":\"object\",\"type\":\"BillingLedgerEntry\",\"relationName\":\"BillingLedgerEntryToGenerationRequest\"}],\"dbName\":null},\"GenerationAsset\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"requestId\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"request\",\"kind\":\"object\",\"type\":\"GenerationRequest\",\"relationName\":\"GenerationAssetToGenerationRequest\"},{\"name\":\"storageKey\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"mimeType\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"width\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"height\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = {
   getRuntime: async () => require('./query_engine_bg.js'),

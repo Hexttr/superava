@@ -67,11 +67,16 @@ async function main() {
       baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
       shortPromptMaxChars: 80,
       shortPromptMaxWords: 6,
+      billingEnabled: false,
+      textGenerationPriceMinor: 9900,
+      photoGenerationPriceMinor: 14900,
+      currency: "RUB",
     },
     update: {
       baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
       shortPromptMaxChars: 80,
       shortPromptMaxWords: 6,
+      currency: "RUB",
     },
   });
 
@@ -108,6 +113,8 @@ async function main() {
       promptSkeleton:
         "Create a luxury editorial portrait. Preserve the subject's identity. Use soft studio lighting, shallow depth of field, premium styling.",
       categoryId: null as string | null,
+      priceMinor: 12900,
+      isActive: true,
     },
     {
       slug: "holiday-hero",
@@ -120,6 +127,8 @@ async function main() {
       promptSkeleton:
         "Create a festive holiday portrait. Preserve the subject's identity. Warm lighting, seasonal background, photorealistic.",
       categoryId: categoryRecords["Новый год"] ?? null,
+      priceMinor: 11900,
+      isActive: true,
     },
     {
       slug: "birthday-rooftop-sunset",
@@ -132,6 +141,8 @@ async function main() {
       promptSkeleton:
         "Create a highly realistic photo of an elegant woman sitting on the terrace of a luxury rooftop restaurant at sunset. She is seated sideways to the camera at a round white marble table, with a panoramic view of a big city skyline and tall skyscrapers in the background, all lit by warm golden hour light. She is wearing a long light-beige open coat, a plain white V-neck top tucked into high-waisted white cropped tailored trousers. On her feet are nude high-heel pumps with thin heels. She leans slightly back in a soft beige chair, with one leg crossed over the other, her pose relaxed, confident and feminine. One hand rests on a beige clutch on the table; on her wrist a gold bracelet, on her fingers a delicate ring, on her neck a thin gold chain with a small pendant, and elegant earrings in her ears. On the table there is a glass of champagne and a small white cup with saucer. The lighting is very soft and warm, emphasizing the beige-cream color palette of the outfit and the interior. The style of the shot is chic lifestyle and fashion photography for a business and luxury magazine, realistic, high detail, vertical composition.",
       categoryId: categoryRecords["День рождения"] ?? null,
+      priceMinor: 15900,
+      isActive: true,
     },
   ];
 
@@ -191,6 +202,21 @@ async function main() {
 
   const existingProfile = await prisma.photoProfile.findUnique({
     where: { userId: devUser.id },
+  });
+
+  await prisma.billingAccount.upsert({
+    where: { userId: devUser.id },
+    create: {
+      userId: devUser.id,
+      currency: "RUB",
+      balanceMinor: 500000,
+    },
+    update: {
+      currency: "RUB",
+      balanceMinor: {
+        set: 500000,
+      },
+    },
   });
 
   if (!existingProfile) {

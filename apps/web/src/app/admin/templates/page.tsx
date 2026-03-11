@@ -3,6 +3,14 @@ import { templatePreviewUrl } from "@/lib/admin-api";
 import { getAdminCategories, getAdminTemplates } from "@/lib/server-api";
 import { CreateTemplateButton } from "./create-template-button";
 
+function formatRub(minor: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(minor / 100);
+}
+
 export default async function AdminTemplatesPage() {
   const [templates, categories] = await Promise.all([
     getAdminTemplates(),
@@ -37,6 +45,9 @@ export default async function AdminTemplatesPage() {
               <p className="font-medium text-white">{tpl.title}</p>
               <p className="text-sm text-slate-400">
                 {tpl.slug} · {tpl.categoryId ? categoryMap.get(tpl.categoryId) ?? "—" : "—"}
+              </p>
+              <p className="text-sm text-fuchsia-300">
+                {formatRub(tpl.priceMinor)} · {tpl.isActive ? "активен" : "скрыт"}
               </p>
             </div>
             <Link

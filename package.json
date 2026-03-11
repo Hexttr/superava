@@ -8,6 +8,10 @@
     "dev:web": "pnpm --filter @superava/web dev",
     "dev:api": "pnpm --filter @superava/api dev",
     "dev:worker": "pnpm --filter @superava/worker dev",
+    "start": "pnpm --parallel --filter @superava/api --filter @superava/web --filter @superava/worker start",
+    "start:web": "pnpm --filter @superava/web start",
+    "start:api": "pnpm --filter @superava/api start",
+    "start:worker": "pnpm --filter @superava/worker start",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck"
