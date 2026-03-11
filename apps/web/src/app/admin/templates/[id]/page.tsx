@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAdminCategories, getAdminTemplates } from "@/lib/admin-api";
 import { templatePreviewUrl } from "@/lib/admin-api";
+import { getAdminCategories, getAdminTemplates } from "@/lib/server-api";
 import { TemplateEditForm } from "./template-edit-form";
 
 export default async function AdminTemplateDetailPage({

@@ -126,6 +126,7 @@ export async function uploadProfileShot(
     `${API_URL}/api/v1/profile/shots/${parsedShotType}`,
     {
       method: "POST",
+      credentials: "include",
       body: formData,
     }
   );
@@ -148,6 +149,7 @@ export async function uploadReferencePhoto(
   formData.append("file", file);
   const response = await fetch(`${API_URL}/api/v1/reference-photos`, {
     method: "POST",
+    credentials: "include",
     body: formData,
   });
   if (!response.ok) {
@@ -163,6 +165,7 @@ export async function createGenerationRequest(
   const payload = createGenerationInputSchema.parse(input);
   const response = await fetch(`${API_URL}${apiRoutes.generations}`, {
     method: "POST",
+    credentials: "include",
     headers: {
       "content-type": "application/json",
     },

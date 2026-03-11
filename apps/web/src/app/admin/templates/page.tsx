@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getAdminCategories, getAdminTemplates } from "@/lib/admin-api";
 import { templatePreviewUrl } from "@/lib/admin-api";
+import { getAdminCategories, getAdminTemplates } from "@/lib/server-api";
 import { CreateTemplateButton } from "./create-template-button";
 
 export default async function AdminTemplatesPage() {

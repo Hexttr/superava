@@ -1,8 +1,11 @@
 import "dotenv/config";
+import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 import { demoGenerationPromptConfig } from "@superava/shared";
 
 const prisma = new PrismaClient();
+const DEFAULT_DEV_PASSWORD = "devpass123";
+const SALT_ROUNDS = 10;
 
 const PROMPT_PARTS = [
   {
@@ -141,14 +144,46 @@ async function main() {
     });
   }
 
+  const devPasswordHash = await bcrypt.hash(
+    process.env.DEV_USER_PASSWORD ?? DEFAULT_DEV_PASSWORD,
+    SALT_ROUNDS
+  );
   const devUser = await prisma.user.upsert({
     where: { email: "dev@superava.local" },
     create: {
       email: "dev@superava.local",
       name: "Dev User",
+      role: "ADMIN",
+      passwordHash: devPasswordHash,
+      emailVerified: true,
     },
-    update: {},
+    update: {
+      role: "ADMIN",
+      passwordHash: devPasswordHash,
+      emailVerified: true,
+    },
   });
+
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminPassword = process.env.ADMIN_PASSWORD?.trim();
+  if (adminEmail && adminPassword) {
+    const adminPasswordHash = await bcrypt.hash(adminPassword, SALT_ROUNDS);
+    await prisma.user.upsert({
+      where: { email: adminEmail },
+      create: {
+        email: adminEmail,
+        name: "Admin",
+        role: "ADMIN",
+        passwordHash: adminPasswordHash,
+        emailVerified: true,
+      },
+      update: {
+        role: "ADMIN",
+        passwordHash: adminPasswordHash,
+        emailVerified: true,
+      },
+    });
+  }
 
   const existingProfile = await prisma.photoProfile.findUnique({
     where: { userId: devUser.id },
@@ -163,7 +198,7 @@ async function main() {
     });
   }
 
-  console.log("Seed completed: prompt parts, categories, templates, and dev user/profile ready.");
+  console.log("Seed completed: prompt parts, catalog data, and auth bootstrap users are ready.");
 }
 
 main()

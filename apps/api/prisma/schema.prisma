@@ -7,15 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  email         String?  @unique
+  name          String?
+  avatarUrl     String?
+  passwordHash  String?
+  emailVerified Boolean  @default(false)
+  role          UserRole @default(USER)
+  profiles      PhotoProfile[]
+  generations   GenerationRequest[]
+  sessions      Session[]
+}
+
+model Session {
   id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  // Auth fields reserved for future
-  email     String?  @unique
-  name      String?
-  profiles  PhotoProfile[]
-  generations GenerationRequest[]
+
+  @@index([userId])
+  @@index([token])
 }
 
 model PhotoProfile {

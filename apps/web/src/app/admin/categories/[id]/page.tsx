@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getAdminCategories } from "@/lib/admin-api";
 import { categoryPreviewUrl } from "@/lib/admin-api";
+import { getAdminCategories } from "@/lib/server-api";
 import { CategoryEditForm } from "./category-edit-form";
 
 export default async function AdminCategoryDetailPage({

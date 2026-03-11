@@ -33,6 +33,7 @@ async function adminFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     cache: "no-store",
+    credentials: "include",
     headers: {
       "content-type": "application/json",
       ...options?.headers,
@@ -77,6 +78,7 @@ export async function uploadCategoryPreview(id: string, file: File): Promise<Cat
   formData.append("file", file);
   const res = await fetch(`${API_URL}/api/v1/admin/categories/${id}/preview`, {
     method: "POST",
+    credentials: "include",
     body: formData,
   });
   if (!res.ok) {
@@ -136,6 +138,7 @@ export async function uploadTemplatePreview(id: string, file: File): Promise<Pro
   formData.append("file", file);
   const res = await fetch(`${API_URL}/api/v1/admin/templates/${id}/preview`, {
     method: "POST",
+    credentials: "include",
     body: formData,
   });
   if (!res.ok) {

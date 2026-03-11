@@ -26,6 +26,18 @@ export type GenerationStatus = z.infer<typeof generationStatusSchema>;
 export const templateGroupSchema = z.enum(["vip", "holiday"]);
 export type TemplateGroup = z.infer<typeof templateGroupSchema>;
 
+export const userRoleSchema = z.enum(["USER", "ADMIN"]);
+export type UserRole = z.infer<typeof userRoleSchema>;
+
+export const authUserSchema = z.object({
+  id: z.string(),
+  email: z.string().nullable(),
+  name: z.string().nullable(),
+  role: userRoleSchema,
+});
+
+export type AuthUser = z.infer<typeof authUserSchema>;
+
 export const profileShotSchema = z.object({
   id: z.string(),
   type: shotTypeSchema,

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getAdminCategories } from "@/lib/admin-api";
 import { categoryPreviewUrl } from "@/lib/admin-api";
+import { getAdminCategories } from "@/lib/server-api";
 import { CreateCategoryButton } from "./create-category-button";
 
 export default async function AdminCategoriesPage() {

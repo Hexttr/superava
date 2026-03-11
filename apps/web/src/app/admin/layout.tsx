@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireAdminUser } from "@/lib/server-api";
 
 const navItems = [
   { href: "/admin", label: "Дашборд" },
@@ -11,11 +12,13 @@ const navPlaceholders = [
   { href: "/admin/billing", label: "Биллинг" },
 ];
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await requireAdminUser();
+
   return (
     <div className="flex min-h-screen">
       <aside className="w-56 shrink-0 border-r border-white/10 bg-slate-950/80">
@@ -26,6 +29,7 @@ export default function AdminLayout({
           >
             Админка
           </Link>
+          <p className="mb-3 text-xs text-slate-500">{user.email ?? user.name ?? "admin"}</p>
           {navItems.map((item) => (
             <Link
               key={item.href}

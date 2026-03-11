@@ -3,12 +3,11 @@ import Link from "next/link";
 import { SectionCard, StatusPill } from "@superava/ui";
 import { GenerationComposer } from "@/components/generation-composer";
 import {
-  getCategories,
   getGenerationPromptConfig,
   getProfile,
   getPromptConstructor,
   getTemplates,
-} from "@/lib/api";
+} from "@/lib/server-api";
 import { templateTextBySlug } from "@/lib/ui-text";
 
 export default async function TemplatesPage({
@@ -19,14 +18,12 @@ export default async function TemplatesPage({
   const params = await searchParams;
   const categoryId = params.category;
 
-  const [templates, profile, generationPromptConfig, promptConstructor, categories] =
-    await Promise.all([
-      getTemplates(),
-      getProfile(),
-      getGenerationPromptConfig(),
-      getPromptConstructor(),
-      getCategories(),
-    ]);
+  const [templates, profile, generationPromptConfig, promptConstructor] = await Promise.all([
+    getTemplates(),
+    getProfile(),
+    getGenerationPromptConfig(),
+    getPromptConstructor(),
+  ]);
 
   const filteredTemplates = categoryId
     ? templates.filter((t) => (t as { categoryId?: string | null }).categoryId === categoryId)

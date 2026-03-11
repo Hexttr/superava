@@ -303,21 +303,15 @@ export function GenerationComposer(props: {
       ) : null}
 
       <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-base font-semibold text-white">
-              {isReferenceOnly ? "Загрузите кадр" : "Опишите кадр"}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">
-              {isReferenceOnly
-                ? "На фото — 1 человек. Мы проанализируем сцену и вставим вас."
-                : "Лицо возьмем из профиля, сцену соберём по описанию."}
-            </p>
-          </div>
-          <StatusPill
-            label={isPending ? "запуск" : browserTransportEnabled ? "preview" : "server"}
-            tone="accent"
-          />
+        <div>
+          <p className="text-base font-semibold text-white">
+            {isReferenceOnly ? "Загрузите кадр" : "Опишите кадр"}
+          </p>
+          <p className="mt-1 text-sm text-slate-400">
+            {isReferenceOnly
+              ? "На фото — 1 человек. Мы проанализируем сцену и вставим вас."
+              : "Лицо возьмем из профиля, сцену соберём по описанию."}
+          </p>
         </div>
         {!isReferenceOnly && (
           <textarea
@@ -362,16 +356,22 @@ export function GenerationComposer(props: {
             )}
           </div>
         )}
-        <label className="mt-4 flex cursor-pointer items-center gap-3">
+        {isReferenceOnly && (
+          <textarea
+            value={prompt}
+            onChange={(event) => setPrompt(event.currentTarget.value)}
+            placeholder="Дополните сцену своим промптом (необязательно)"
+            className="mt-4 min-h-20 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
+          />
+        )}
+        <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-fuchsia-400/20">
           <input
             type="checkbox"
             checked={enhancePortrait}
             onChange={(e) => setEnhancePortrait(e.target.checked)}
             className="h-4 w-4 rounded border-white/20 bg-white/5 text-fuchsia-400 focus:ring-fuchsia-400/40"
           />
-          <span className="text-sm text-slate-300">
-            Улучшить портрет — смягчить кожу, добавить живость взгляду, осветлить кадр
-          </span>
+          <span className="text-sm font-medium text-slate-200">Улучшить портрет</span>
         </label>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
@@ -389,11 +389,6 @@ export function GenerationComposer(props: {
             Мои генерации
           </Link>
         </div>
-        <p className="mt-4 text-xs leading-5 text-slate-500">
-          {browserTransportEnabled
-            ? `Сейчас используется браузерный preview-маршрут через ${browserModel}.`
-            : "Сейчас используется серверный маршрут генерации через API и worker."}
-        </p>
       </div>
 
       {props.showTemplates !== false ? (

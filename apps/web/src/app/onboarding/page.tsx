@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { SectionCard, StatusPill } from "@superava/ui";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
-import { getProfile } from "@/lib/api";
+import { getProfile } from "@/lib/server-api";
 import { ProfileShotUploader } from "@/components/profile-shot-uploader";
 
 export default async function OnboardingPage() {

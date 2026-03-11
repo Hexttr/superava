@@ -2,19 +2,21 @@ import "dotenv/config";
 
 import { randomUUID } from "node:crypto";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import {
+  type AuthUser,
+  authUserSchema,
   apiRoutes,
   createGenerationInputSchema,
   demoGenerationPromptConfig,
   shotTypeSchema,
 } from "@superava/shared";
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import { prisma } from "./db.js";
 import { startQueue, stopQueue } from "./queue.js";
 import { createGeneration, listGenerations } from "./services/generation.js";
 import {
-  getOrCreateDevUser,
   getOrCreateProfile,
   toApiProfile,
   uploadProfileShot,
@@ -28,13 +30,31 @@ import {
   referencePhotoKey,
   templatePreviewKey,
 } from "./storage.js";
+import {
+  deleteUserSession,
+  getUserFromSession,
+  SESSION_COOKIE,
+} from "./auth/session.js";
+import {
+  registerAndCreateSession,
+  loginAndCreateSession,
+} from "./auth/user-auth.js";
+
+const WEB_ORIGIN = process.env.WEB_ORIGIN ?? "http://localhost:3000";
+const SESSION_SECRET = process.env.SESSION_SECRET ?? "dev-secret-change-in-prod";
+const isProduction = process.env.NODE_ENV === "production";
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
 
 const app = Fastify({
   logger: true,
 });
 
+await app.register(cookie, {
+  secret: SESSION_SECRET,
+});
 await app.register(cors, {
-  origin: true,
+  origin: WEB_ORIGIN,
+  credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
 });
 await app.register(multipart, {
@@ -42,6 +62,58 @@ await app.register(multipart, {
     fileSize: 10 * 1024 * 1024,
     files: 1,
   },
+});
+
+const sessionCookieOptions = {
+  path: "/",
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: isProduction,
+  maxAge: SESSION_MAX_AGE,
+};
+
+// --- User Auth ---
+app.post("/api/v1/auth/register", async (request, reply) => {
+  const body = request.body as { email?: string; password?: string };
+  if (!body?.email || !body?.password) {
+    return reply.status(400).send({ error: "email_and_password_required" });
+  }
+  const result = await registerAndCreateSession(body.email, body.password);
+  if (!result.ok) {
+    return reply.status(400).send({ error: result.error });
+  }
+  reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
+  return reply.send({ ok: true });
+});
+
+app.post("/api/v1/auth/login", async (request, reply) => {
+  const body = request.body as { email?: string; password?: string };
+  if (!body?.email || !body?.password) {
+    return reply.status(400).send({ error: "email_and_password_required" });
+  }
+  const result = await loginAndCreateSession(body.email, body.password);
+  if (!result.ok) {
+    return reply.status(401).send({ error: result.error });
+  }
+  reply.setCookie(SESSION_COOKIE, result.token!, sessionCookieOptions);
+  return reply.send({ ok: true });
+});
+
+app.post("/api/v1/auth/logout", async (request, reply) => {
+  const token = (request.cookies as Record<string, string>)?.[SESSION_COOKIE];
+  if (token) {
+    await deleteUserSession(token);
+  }
+  reply.clearCookie(SESSION_COOKIE, { path: "/" });
+  return reply.send({ ok: true });
+});
+
+app.get("/api/v1/auth/me", async (request, reply) => {
+  const user = await getUserFromSession(request);
+  if (!user) {
+    return reply.status(401).send({ error: "unauthorized" });
+  }
+  return reply.send(authUserSchema.parse(user));
 });
 
 app.get(apiRoutes.health, async () => {
@@ -55,10 +127,48 @@ app.get(apiRoutes.health, async () => {
   };
 });
 
-app.get(apiRoutes.profile, async () => {
-  const user = await getOrCreateDevUser();
-  const profile = await getOrCreateProfile(user.id);
+async function requireUser(
+  request: FastifyRequest,
+  reply: { status: (code: number) => { send: (body: unknown) => unknown } }
+): Promise<AuthUser | null> {
+  const user = await getUserFromSession(request);
+  if (!user) {
+    reply.status(401).send({ error: "unauthorized" });
+    return null;
+  }
+  return user;
+}
 
+async function requireAdmin(
+  request: FastifyRequest,
+  reply: { status: (code: number) => { send: (body: unknown) => unknown } }
+): Promise<boolean> {
+  const user = await requireUser(request, reply);
+  if (!user) {
+    return false;
+  }
+  if (user.role !== "ADMIN") {
+    reply.status(403).send({ error: "forbidden" });
+    return false;
+  }
+  return true;
+}
+
+app.get("/api/v1/admin/auth/me", async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) {
+    return;
+  }
+  if (user.role !== "ADMIN") {
+    return reply.status(403).send({ error: "forbidden" });
+  }
+  return reply.send(authUserSchema.parse(user));
+});
+
+app.get(apiRoutes.profile, async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) return;
+  const profile = await getOrCreateProfile(user.id);
   return toApiProfile(profile);
 });
 
@@ -128,9 +238,9 @@ app.get(apiRoutes.generationPromptConfig, async () => {
   };
 });
 
-app.get(apiRoutes.generations, async () => {
-  const user = await getOrCreateDevUser();
-
+app.get(apiRoutes.generations, async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) return;
   return {
     items: await listGenerations(user.id),
   };
@@ -145,7 +255,10 @@ app.get("/api/v1/generations/:generationId/preview", async (request, reply) => {
     });
   }
 
-  const user = await getOrCreateDevUser();
+  const user = await getUserFromSession(request);
+  if (!user) {
+    return reply.status(401).send({ error: "unauthorized" });
+  }
   const generation = await prisma.generationRequest.findFirst({
     where: {
       id: generationId,
@@ -175,7 +288,8 @@ app.get("/api/v1/generations/:generationId/preview", async (request, reply) => {
 });
 
 // --- Admin: Categories ---
-app.get("/api/v1/admin/categories", async () => {
+app.get("/api/v1/admin/categories", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const items = await prisma.category.findMany({
     orderBy: { sortOrder: "asc" },
   });
@@ -183,6 +297,7 @@ app.get("/api/v1/admin/categories", async () => {
 });
 
 app.post("/api/v1/admin/categories", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const body = request.body as { name?: string; sortOrder?: number };
   if (!body?.name || typeof body.name !== "string") {
     return reply.status(400).send({ error: "name required" });
@@ -197,6 +312,7 @@ app.post("/api/v1/admin/categories", async (request, reply) => {
 });
 
 app.patch("/api/v1/admin/categories/:id", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   const body = request.body as { name?: string; previewKey?: string; sortOrder?: number };
@@ -212,6 +328,7 @@ app.patch("/api/v1/admin/categories/:id", async (request, reply) => {
 });
 
 app.post("/api/v1/admin/categories/:id/preview", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   const file = await request.file();
@@ -229,6 +346,7 @@ app.post("/api/v1/admin/categories/:id/preview", async (request, reply) => {
 });
 
 app.delete("/api/v1/admin/categories/:id", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   await prisma.category.delete({ where: { id } });
@@ -236,7 +354,8 @@ app.delete("/api/v1/admin/categories/:id", async (request, reply) => {
 });
 
 // --- Admin: Templates ---
-app.get("/api/v1/admin/templates", async () => {
+app.get("/api/v1/admin/templates", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const items = await prisma.promptTemplate.findMany({
     orderBy: [{ categoryId: "asc" }, { title: "asc" }],
     include: { category: true },
@@ -245,6 +364,7 @@ app.get("/api/v1/admin/templates", async () => {
 });
 
 app.post("/api/v1/admin/templates", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const body = request.body as {
     slug?: string;
     title?: string;
@@ -274,6 +394,7 @@ app.post("/api/v1/admin/templates", async (request, reply) => {
 });
 
 app.patch("/api/v1/admin/templates/:id", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   const body = request.body as {
@@ -310,6 +431,7 @@ app.patch("/api/v1/admin/templates/:id", async (request, reply) => {
 });
 
 app.post("/api/v1/admin/templates/:id/preview", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   const file = await request.file();
@@ -327,6 +449,7 @@ app.post("/api/v1/admin/templates/:id/preview", async (request, reply) => {
 });
 
 app.delete("/api/v1/admin/templates/:id", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const id = (request.params as { id?: string }).id;
   if (!id) return reply.status(400).send({ error: "id required" });
   await prisma.promptTemplate.delete({ where: { id } });
@@ -334,7 +457,8 @@ app.delete("/api/v1/admin/templates/:id", async (request, reply) => {
 });
 
 // --- Admin: Prompt Parts ---
-app.get("/api/v1/admin/prompt-parts", async () => {
+app.get("/api/v1/admin/prompt-parts", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const items = await prisma.promptPart.findMany({
     orderBy: { sortOrder: "asc" },
   });
@@ -342,6 +466,7 @@ app.get("/api/v1/admin/prompt-parts", async () => {
 });
 
 app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
+  if (!(await requireAdmin(request, reply))) return;
   const key = (request.params as { key?: string }).key;
   if (!key) return reply.status(400).send({ error: "key required" });
   const body = request.body as { label?: string; value?: string; sortOrder?: number };
@@ -357,6 +482,8 @@ app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
 });
 
 app.post("/api/v1/reference-photos", async (request, reply) => {
+  const user = await requireUser(request, reply);
+  if (!user) return;
   const file = await request.file();
   if (!file) return reply.status(400).send({ error: "missing_file" });
   const buffer = await file.toBuffer();
@@ -378,8 +505,10 @@ app.post(apiRoutes.generations, async (request, reply) => {
     });
   }
 
+  const user = await requireUser(request, reply);
+  if (!user) return;
+
   try {
-    const user = await getOrCreateDevUser();
     const input = parseResult.data;
     const { jobId, requestId } = await createGeneration(user.id, input);
 
@@ -416,7 +545,8 @@ app.post("/api/v1/profile/shots/:shotType", async (request, reply) => {
   }
 
   const buffer = await file.toBuffer();
-  const user = await getOrCreateDevUser();
+  const user = await requireUser(request, reply);
+  if (!user) return;
   const profile = await getOrCreateProfile(user.id);
   const result = await uploadProfileShot(profile.id, parseResult.data, buffer);
 
@@ -446,7 +576,8 @@ app.get("/api/v1/profile/shots/:shotType/preview", async (request, reply) => {
     });
   }
 
-  const user = await getOrCreateDevUser();
+  const user = await requireUser(request, reply);
+  if (!user) return;
   const profile = await getOrCreateProfile(user.id);
   const shot = profile.shots.find((item) => item.shotType === parseResult.data);
 

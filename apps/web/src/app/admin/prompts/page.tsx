@@ -1,4 +1,4 @@
-import { getAdminPromptParts } from "@/lib/admin-api";
+import { getAdminPromptParts } from "@/lib/server-api";
 import { PromptPartEditor } from "./prompt-part-editor";
 
 export default async function AdminPromptsPage() {

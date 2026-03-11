@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SectionCard } from "@superava/ui";
@@ -12,7 +11,7 @@ import {
   getPromptConstructor,
   getProfile,
   getTemplates,
-} from "@/lib/api";
+} from "@/lib/server-api";
 
 function LogoIcon() {
   return (
@@ -56,13 +55,14 @@ function LogoIcon() {
   );
 }
 
+const CATEGORY_IMAGE_VERSION = 2;
 const CATEGORY_IMAGES: Record<string, string> = {
-  "8 марта": "/images/category-8marta.jpg",
-  "Новый год": "/images/category-newyear.jpg",
-  "День рождения": "/images/category-birthday.jpg",
-  "День победы": "/images/category-victory.jpg",
-  "23 февраля": "/images/category-23feb.jpg",
-  Хэллоуин: "/images/category-halloween.jpg",
+  "8 марта": `/images/category-8marta.jpg?v=${CATEGORY_IMAGE_VERSION}`,
+  "Новый год": `/images/category-newyear.jpg?v=${CATEGORY_IMAGE_VERSION}`,
+  "День рождения": `/images/category-birthday.jpg?v=${CATEGORY_IMAGE_VERSION}`,
+  "День победы": `/images/category-victory.jpg?v=${CATEGORY_IMAGE_VERSION}`,
+  "23 февраля": `/images/category-23feb.jpg?v=${CATEGORY_IMAGE_VERSION}`,
+  Хэллоуин: `/images/category-halloween.jpg?v=${CATEGORY_IMAGE_VERSION}`,
 };
 
 export default async function Home() {
@@ -105,7 +105,8 @@ export default async function Home() {
             </Link>
             <Link
               href="/templates"
-              className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-white/90"
+              style={{ color: "#0f172a" }}
+              className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold transition hover:bg-white/90"
             >
               Готовые сцены
             </Link>
@@ -187,12 +188,11 @@ export default async function Home() {
                 >
                   {imageSrc ? (
                     <>
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
                         src={imageSrc}
                         alt=""
-                        fill
-                        className="object-cover transition group-hover:scale-105"
-                        sizes="(max-width: 1280px) 50vw, 25vw"
+                        className="absolute inset-0 h-full w-full object-cover transition group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/30 to-transparent" />
                     </>

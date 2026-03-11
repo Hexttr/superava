@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { SectionCard, StatusPill } from "@superava/ui";
 import { GenerationFeed } from "@/components/generation-feed";
-import { getGenerations } from "@/lib/api";
+import { getGenerations } from "@/lib/server-api";
 
 export default async function GenerationsPage() {
   const generations = await getGenerations();
