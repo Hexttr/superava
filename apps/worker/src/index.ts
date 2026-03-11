@@ -188,9 +188,19 @@ async function runJob(payload: {
   const template = payload.templateId
     ? await prisma.promptTemplate.findUnique({ where: { id: payload.templateId } })
     : null;
-  const appConfig = await prisma.appConfig.findUnique({
-    where: { id: "default" },
-  });
+  const [promptParts, appConfig] = await Promise.all([
+    prisma.promptPart.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.appConfig.findUnique({ where: { id: "default" } }),
+  ]);
+
+  const promptConstructor =
+    promptParts.length > 0
+      ? {
+          parts: promptParts.map((p: { key: string; value: string }) => ({ key: p.key, value: p.value })),
+          shortPromptMaxChars: appConfig?.shortPromptMaxChars ?? 80,
+          shortPromptMaxWords: appConfig?.shortPromptMaxWords ?? 6,
+        }
+      : undefined;
 
   const prepared = provider.preparePayload({
     input: {
@@ -232,6 +242,7 @@ async function runJob(payload: {
     config: {
       basePrompt: appConfig?.baseGenerationPrompt ?? DEFAULT_GENERATION_BASE_PROMPT,
     },
+    promptConstructor,
   });
 
   const generated = await renderGenerationImage({

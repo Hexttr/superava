@@ -9,6 +9,7 @@ import {
   normalizeGeminiErrorMessage,
   type GenerationPromptConfig,
   type PhotoProfile,
+  type PromptConstructorConfig,
   type PromptTemplate,
 } from "@superava/shared";
 import { StatusPill } from "@superava/ui";
@@ -25,6 +26,7 @@ export function GenerationComposer(props: {
   templates: PromptTemplate[];
   profile: PhotoProfile;
   generationPromptConfig: GenerationPromptConfig;
+  promptConstructor?: PromptConstructorConfig;
   showTemplates?: boolean;
 }) {
   const router = useRouter();
@@ -124,6 +126,7 @@ export function GenerationComposer(props: {
                     profile: props.profile,
                     config: props.generationPromptConfig,
                     template: args.template,
+                    promptConstructor: props.promptConstructor,
                   }),
                 },
                 ...referenceParts,

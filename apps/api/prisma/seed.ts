@@ -4,17 +4,94 @@ import { demoGenerationPromptConfig } from "@superava/shared";
 
 const prisma = new PrismaClient();
 
+const PROMPT_PARTS = [
+  {
+    key: "base",
+    label: "Основные правила идентичности",
+    value:
+      "Analyze all provided face photos as references of the same real person from multiple angles. Create exactly one highly realistic professional photo with studio-grade lighting, realistic skin texture, maximum facial likeness, and stable identity preservation. The generated person must be this exact person, with special attention to facial structure, eyes, nose, lips, jawline, skin tone, and overall resemblance. Prioritize realism, professional photography quality, and consistency over stylization. Avoid face drift, beauty-filter skin, duplicate people, distorted anatomy, and any changes that weaken resemblance unless explicitly requested.",
+    sortOrder: 0,
+  },
+  {
+    key: "profile_meta",
+    label: "Мета профиля",
+    value: "Reference photos cover {count} face angles. Profile completeness {percent}%.",
+    sortOrder: 1,
+  },
+  {
+    key: "closed_mouth",
+    label: "Закрытый рот",
+    value:
+      "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile, no open mouth in the generated image.",
+    sortOrder: 2,
+  },
+  {
+    key: "short_expansion",
+    label: "Расширение короткого промпта",
+    value:
+      "First, mentally expand this minimal request into a rich cinematic scene: environment, lighting, composition, props, styling. Then generate. User request: ",
+    sortOrder: 3,
+  },
+  {
+    key: "user_request_prefix",
+    label: "Префикс запроса пользователя",
+    value: "User request: ",
+    sortOrder: 4,
+  },
+  {
+    key: "enhance_portrait",
+    label: "Улучшение портрета",
+    value:
+      "Apply subtle portrait enhancement: bright, expressive eyes with natural sparkle and lively gaze; soft, even skin tone with gentle retouching, no visible wrinkles or under-eye bags; well-lit, airy scene without dark or gloomy tones; polished, magazine-quality finish with flattering lighting.",
+    sortOrder: 5,
+  },
+];
+
+const CATEGORIES = [
+  { name: "8 марта", sortOrder: 0 },
+  { name: "Новый год", sortOrder: 1 },
+  { name: "День рождения", sortOrder: 2 },
+  { name: "День победы", sortOrder: 3 },
+  { name: "23 февраля", sortOrder: 4 },
+  { name: "Хэллоуин", sortOrder: 5 },
+];
+
 async function main() {
   await prisma.appConfig.upsert({
     where: { id: "default" },
     create: {
       id: "default",
       baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
+      shortPromptMaxChars: 80,
+      shortPromptMaxWords: 6,
     },
     update: {
       baseGenerationPrompt: demoGenerationPromptConfig.basePrompt,
+      shortPromptMaxChars: 80,
+      shortPromptMaxWords: 6,
     },
   });
+
+  for (const part of PROMPT_PARTS) {
+    await prisma.promptPart.upsert({
+      where: { key: part.key },
+      create: part,
+      update: { label: part.label, value: part.value, sortOrder: part.sortOrder },
+    });
+  }
+
+  const categoryRecords: Record<string, string> = {};
+  for (const cat of CATEGORIES) {
+    const existing = await prisma.category.findFirst({ where: { name: cat.name } });
+    if (existing) {
+      categoryRecords[cat.name] = existing.id;
+    } else {
+      const created = await prisma.category.create({
+        data: { name: cat.name, sortOrder: cat.sortOrder },
+      });
+      categoryRecords[cat.name] = created.id;
+    }
+  }
 
   const templates = [
     {
@@ -27,6 +104,7 @@ async function main() {
         "Luxury portrait for profile photos, social media covers, and premium branding.",
       promptSkeleton:
         "Create a luxury editorial portrait. Preserve the subject's identity. Use soft studio lighting, shallow depth of field, premium styling.",
+      categoryId: null as string | null,
     },
     {
       slug: "holiday-hero",
@@ -38,6 +116,7 @@ async function main() {
         "Seasonal hero shot for greeting cards, holiday posts, and campaign visuals.",
       promptSkeleton:
         "Create a festive holiday portrait. Preserve the subject's identity. Warm lighting, seasonal background, photorealistic.",
+      categoryId: categoryRecords["Новый год"] ?? null,
     },
     {
       slug: "birthday-rooftop-sunset",
@@ -49,14 +128,16 @@ async function main() {
         "Elegant birthday portrait on a luxury rooftop terrace with sunset light, champagne, and a premium magazine-style fashion mood.",
       promptSkeleton:
         "Create a highly realistic photo of an elegant woman sitting on the terrace of a luxury rooftop restaurant at sunset. She is seated sideways to the camera at a round white marble table, with a panoramic view of a big city skyline and tall skyscrapers in the background, all lit by warm golden hour light. She is wearing a long light-beige open coat, a plain white V-neck top tucked into high-waisted white cropped tailored trousers. On her feet are nude high-heel pumps with thin heels. She leans slightly back in a soft beige chair, with one leg crossed over the other, her pose relaxed, confident and feminine. One hand rests on a beige clutch on the table; on her wrist a gold bracelet, on her fingers a delicate ring, on her neck a thin gold chain with a small pendant, and elegant earrings in her ears. On the table there is a glass of champagne and a small white cup with saucer. The lighting is very soft and warm, emphasizing the beige-cream color palette of the outfit and the interior. The style of the shot is chic lifestyle and fashion photography for a business and luxury magazine, realistic, high detail, vertical composition.",
+      categoryId: categoryRecords["День рождения"] ?? null,
     },
   ];
 
   for (const t of templates) {
+    const { categoryId, ...rest } = t;
     await prisma.promptTemplate.upsert({
       where: { slug: t.slug },
       create: t,
-      update: t,
+      update: { ...rest, categoryId },
     });
   }
 
@@ -82,7 +163,7 @@ async function main() {
     });
   }
 
-  console.log("Seed completed: templates and dev user/profile ready.");
+  console.log("Seed completed: prompt parts, categories, templates, and dev user/profile ready.");
 }
 
 main()

@@ -43,22 +43,49 @@ model ProfileShot {
   @@index([profileId])
 }
 
+model Category {
+  id         String   @id @default(cuid())
+  name       String
+  previewKey String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  templates  PromptTemplate[]
+}
+
 model PromptTemplate {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  subtitle    String
-  group       String   // vip | holiday
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  title        String
+  subtitle     String
+  group        String    // vip | holiday (legacy)
   previewLabel String
-  description String
-  promptSkeleton String @default("") // Template prompt with placeholders
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  description  String
+  promptSkeleton String @default("")
+  previewKey   String?
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([categoryId])
+}
+
+model PromptPart {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  value     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model AppConfig {
   id                   String   @id
   baseGenerationPrompt String
+  shortPromptMaxChars  Int      @default(80)
+  shortPromptMaxWords  Int      @default(6)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }

@@ -18,7 +18,14 @@ import {
   toApiProfile,
   uploadProfileShot,
 } from "./services/profile.js";
-import { ensureBucket, getObject } from "./storage.js";
+import { validateImage } from "./image-pipeline.js";
+import {
+  categoryPreviewKey,
+  ensureBucket,
+  getObject,
+  putObject,
+  templatePreviewKey,
+} from "./storage.js";
 
 const app = Fastify({
   logger: true,
@@ -54,11 +61,57 @@ app.get(apiRoutes.profile, async () => {
 
 app.get(apiRoutes.templates, async () => {
   const items = await prisma.promptTemplate.findMany({
-    orderBy: [{ group: "asc" }, { title: "asc" }],
+    orderBy: [{ categoryId: "asc" }, { group: "asc" }, { title: "asc" }],
+    include: { category: true },
   });
 
   return {
-    items,
+    items: items.map((t) => ({
+      ...t,
+      categoryId: t.categoryId,
+      previewKey: t.previewKey,
+    })),
+  };
+});
+
+app.get("/api/v1/categories", async () => {
+  const items = await prisma.category.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
+  return { items };
+});
+
+app.get("/api/v1/categories/:id/preview", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const cat = await prisma.category.findUnique({ where: { id } });
+  if (!cat?.previewKey) return reply.status(404).send({ error: "preview_not_found" });
+  const buffer = await getObject(cat.previewKey);
+  reply.header("content-type", "image/jpeg");
+  reply.header("cache-control", "public, max-age=3600");
+  return reply.send(buffer);
+});
+
+app.get("/api/v1/templates/:id/preview", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const tpl = await prisma.promptTemplate.findUnique({ where: { id } });
+  if (!tpl?.previewKey) return reply.status(404).send({ error: "preview_not_found" });
+  const buffer = await getObject(tpl.previewKey);
+  reply.header("content-type", "image/jpeg");
+  reply.header("cache-control", "public, max-age=3600");
+  return reply.send(buffer);
+});
+
+app.get("/api/v1/config/prompt-constructor", async () => {
+  const [parts, config] = await Promise.all([
+    prisma.promptPart.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.appConfig.findUnique({ where: { id: "default" } }),
+  ]);
+  return {
+    parts,
+    shortPromptMaxChars: config?.shortPromptMaxChars ?? 80,
+    shortPromptMaxWords: config?.shortPromptMaxWords ?? 6,
   };
 });
 
@@ -116,6 +169,188 @@ app.get("/api/v1/generations/:generationId/preview", async (request, reply) => {
   reply.header("content-type", asset.mimeType || "image/png");
   reply.header("cache-control", "public, max-age=3600");
   return reply.send(buffer);
+});
+
+// --- Admin: Categories ---
+app.get("/api/v1/admin/categories", async () => {
+  const items = await prisma.category.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
+  return { items };
+});
+
+app.post("/api/v1/admin/categories", async (request, reply) => {
+  const body = request.body as { name?: string; sortOrder?: number };
+  if (!body?.name || typeof body.name !== "string") {
+    return reply.status(400).send({ error: "name required" });
+  }
+  const created = await prisma.category.create({
+    data: {
+      name: body.name,
+      sortOrder: body.sortOrder ?? 0,
+    },
+  });
+  return reply.status(201).send(created);
+});
+
+app.patch("/api/v1/admin/categories/:id", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const body = request.body as { name?: string; previewKey?: string; sortOrder?: number };
+  const data: Record<string, unknown> = {};
+  if (typeof body?.name === "string") data.name = body.name;
+  if (typeof body?.previewKey === "string") data.previewKey = body.previewKey;
+  if (typeof body?.sortOrder === "number") data.sortOrder = body.sortOrder;
+  const updated = await prisma.category.update({
+    where: { id },
+    data,
+  });
+  return reply.send(updated);
+});
+
+app.post("/api/v1/admin/categories/:id/preview", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const file = await request.file();
+  if (!file) return reply.status(400).send({ error: "missing_file" });
+  const buffer = await file.toBuffer();
+  const validation = await validateImage(buffer);
+  if (!validation.ok) return reply.status(400).send({ error: validation.error ?? "invalid_image" });
+  const key = categoryPreviewKey(id);
+  await putObject(key, buffer, "image/jpeg");
+  const updated = await prisma.category.update({
+    where: { id },
+    data: { previewKey: key },
+  });
+  return reply.status(201).send(updated);
+});
+
+app.delete("/api/v1/admin/categories/:id", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  await prisma.category.delete({ where: { id } });
+  return reply.status(204).send();
+});
+
+// --- Admin: Templates ---
+app.get("/api/v1/admin/templates", async () => {
+  const items = await prisma.promptTemplate.findMany({
+    orderBy: [{ categoryId: "asc" }, { title: "asc" }],
+    include: { category: true },
+  });
+  return { items };
+});
+
+app.post("/api/v1/admin/templates", async (request, reply) => {
+  const body = request.body as {
+    slug?: string;
+    title?: string;
+    subtitle?: string;
+    group?: string;
+    previewLabel?: string;
+    description?: string;
+    promptSkeleton?: string;
+    categoryId?: string | null;
+  };
+  if (!body?.slug || !body?.title) {
+    return reply.status(400).send({ error: "slug and title required" });
+  }
+  const created = await prisma.promptTemplate.create({
+    data: {
+      slug: body.slug,
+      title: body.title,
+      subtitle: body.subtitle ?? "",
+      group: body.group ?? "holiday",
+      previewLabel: body.previewLabel ?? "",
+      description: body.description ?? "",
+      promptSkeleton: body.promptSkeleton ?? "",
+      categoryId: body.categoryId ?? null,
+    },
+  });
+  return reply.status(201).send(created);
+});
+
+app.patch("/api/v1/admin/templates/:id", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const body = request.body as {
+    slug?: string;
+    title?: string;
+    subtitle?: string;
+    group?: string;
+    previewLabel?: string;
+    description?: string;
+    promptSkeleton?: string;
+    categoryId?: string | null;
+    previewKey?: string;
+  };
+  const data: Record<string, unknown> = {};
+  const fields = [
+    "slug",
+    "title",
+    "subtitle",
+    "group",
+    "previewLabel",
+    "description",
+    "promptSkeleton",
+    "categoryId",
+    "previewKey",
+  ] as const;
+  for (const f of fields) {
+    if (body?.[f] !== undefined) data[f] = body[f];
+  }
+  const updated = await prisma.promptTemplate.update({
+    where: { id },
+    data,
+  });
+  return reply.send(updated);
+});
+
+app.post("/api/v1/admin/templates/:id/preview", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  const file = await request.file();
+  if (!file) return reply.status(400).send({ error: "missing_file" });
+  const buffer = await file.toBuffer();
+  const validation = await validateImage(buffer);
+  if (!validation.ok) return reply.status(400).send({ error: validation.error ?? "invalid_image" });
+  const key = templatePreviewKey(id);
+  await putObject(key, buffer, "image/jpeg");
+  const updated = await prisma.promptTemplate.update({
+    where: { id },
+    data: { previewKey: key },
+  });
+  return reply.status(201).send(updated);
+});
+
+app.delete("/api/v1/admin/templates/:id", async (request, reply) => {
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+  await prisma.promptTemplate.delete({ where: { id } });
+  return reply.status(204).send();
+});
+
+// --- Admin: Prompt Parts ---
+app.get("/api/v1/admin/prompt-parts", async () => {
+  const items = await prisma.promptPart.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
+  return { items };
+});
+
+app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
+  const key = (request.params as { key?: string }).key;
+  if (!key) return reply.status(400).send({ error: "key required" });
+  const body = request.body as { label?: string; value?: string; sortOrder?: number };
+  const data: Record<string, unknown> = {};
+  if (typeof body?.label === "string") data.label = body.label;
+  if (typeof body?.value === "string") data.value = body.value;
+  if (typeof body?.sortOrder === "number") data.sortOrder = body.sortOrder;
+  const updated = await prisma.promptPart.update({
+    where: { key },
+    data,
+  });
+  return reply.send(updated);
 });
 
 app.post(apiRoutes.generations, async (request, reply) => {

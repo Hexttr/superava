@@ -2,15 +2,35 @@ import Link from "next/link";
 
 import { SectionCard, StatusPill } from "@superava/ui";
 import { GenerationComposer } from "@/components/generation-composer";
-import { getGenerationPromptConfig, getProfile, getTemplates } from "@/lib/api";
+import {
+  getCategories,
+  getGenerationPromptConfig,
+  getProfile,
+  getPromptConstructor,
+  getTemplates,
+} from "@/lib/api";
 import { templateTextBySlug } from "@/lib/ui-text";
 
-export default async function TemplatesPage() {
-  const [templates, profile, generationPromptConfig] = await Promise.all([
-    getTemplates(),
-    getProfile(),
-    getGenerationPromptConfig(),
-  ]);
+export default async function TemplatesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string }>;
+}) {
+  const params = await searchParams;
+  const categoryId = params.category;
+
+  const [templates, profile, generationPromptConfig, promptConstructor, categories] =
+    await Promise.all([
+      getTemplates(),
+      getProfile(),
+      getGenerationPromptConfig(),
+      getPromptConstructor(),
+      getCategories(),
+    ]);
+
+  const filteredTemplates = categoryId
+    ? templates.filter((t) => (t as { categoryId?: string | null }).categoryId === categoryId)
+    : templates;
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -31,7 +51,7 @@ export default async function TemplatesPage() {
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
-        {templates.map((template) => (
+        {filteredTemplates.map((template) => (
           <div key={template.id} id={template.slug} className="scroll-mt-24">
             <SectionCard eyebrow={template.group} title={template.title}>
               <div className="space-y-3">
@@ -53,6 +73,7 @@ export default async function TemplatesPage() {
             templates={templates}
             profile={profile}
             generationPromptConfig={generationPromptConfig}
+            promptConstructor={promptConstructor ?? undefined}
           />
         </SectionCard>
       </section>

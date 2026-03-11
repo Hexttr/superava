@@ -56,6 +56,8 @@ export const promptTemplateSchema = z.object({
   previewLabel: z.string(),
   description: z.string(),
   promptSkeleton: z.string(),
+  categoryId: z.string().nullable().optional(),
+  previewKey: z.string().nullable().optional(),
 });
 
 export type PromptTemplate = z.infer<typeof promptTemplateSchema>;
@@ -65,6 +67,19 @@ export const generationPromptConfigSchema = z.object({
 });
 
 export type GenerationPromptConfig = z.infer<typeof generationPromptConfigSchema>;
+
+export const promptPartConstructorSchema = z.object({
+  key: z.string(),
+  value: z.string(),
+});
+
+export const promptConstructorConfigSchema = z.object({
+  parts: z.array(promptPartConstructorSchema),
+  shortPromptMaxChars: z.number(),
+  shortPromptMaxWords: z.number(),
+});
+
+export type PromptConstructorConfig = z.infer<typeof promptConstructorConfigSchema>;
 
 export const DEFAULT_GENERATION_BASE_PROMPT =
   "Analyze all provided face photos as references of the same real person from multiple angles. Create exactly one highly realistic professional photo with studio-grade lighting, realistic skin texture, maximum facial likeness, and stable identity preservation. The generated person must be this exact person, with special attention to facial structure, eyes, nose, lips, jawline, skin tone, and overall resemblance. Prioritize realism, professional photography quality, and consistency over stylization. Avoid face drift, beauty-filter skin, duplicate people, distorted anatomy, and any changes that weaken resemblance unless explicitly requested.";
@@ -111,11 +126,15 @@ const CLOSED_MOUTH_PROMPT =
 const SHORT_PROMPT_EXPANSION_PREFIX =
   "First, mentally expand this minimal request into a rich cinematic scene: imagine environment, lighting, composition, props, and styling. Then generate the image. User request: ";
 
-function isShortUserPrompt(prompt: string): boolean {
+function isShortUserPrompt(
+  prompt: string,
+  maxChars: number,
+  maxWords: number
+): boolean {
   const trimmed = prompt.trim();
   if (!trimmed) return false;
   const wordCount = trimmed.split(/\s+/).length;
-  return trimmed.length < 80 || wordCount < 6;
+  return trimmed.length < maxChars || wordCount < maxWords;
 }
 
 export function buildGenerationPrompt(args: {
@@ -123,30 +142,55 @@ export function buildGenerationPrompt(args: {
   profile: PhotoProfile;
   template?: PromptTemplate;
   config?: GenerationPromptConfig;
+  promptConstructor?: PromptConstructorConfig;
 }) {
+  const constructor = args.promptConstructor;
+  const partsMap = constructor
+    ? new Map(constructor.parts.map((p) => [p.key, p.value]))
+    : null;
+  const maxChars = constructor?.shortPromptMaxChars ?? 80;
+  const maxWords = constructor?.shortPromptMaxWords ?? 6;
+
+  const base =
+    partsMap?.get("base") ?? args.config?.basePrompt ?? DEFAULT_GENERATION_BASE_PROMPT;
+
+  const count = args.profile.shots.filter((shot) => shot.status !== "missing").length;
+  const percent = args.profile.completionPercent;
+  const profileMetaTemplate = partsMap?.get("profile_meta") ?? `Reference photos cover ${count} face angles. Profile completeness: ${percent}%.`;
+  const profileMeta = profileMetaTemplate
+    .replace(/\{count\}/g, String(count))
+    .replace(/\{percent\}/g, String(percent));
+
   const hasSmileShot = args.profile.shots.some(
     (s) => s.type === "front_smile" && s.status !== "missing"
   );
-  const closedMouthRule = !hasSmileShot ? CLOSED_MOUTH_PROMPT : undefined;
+  const closedMouthRule = !hasSmileShot
+    ? (partsMap?.get("closed_mouth") ?? CLOSED_MOUTH_PROMPT)
+    : undefined;
 
+  let sceneRequest: string | undefined;
   const userPrompt = args.input.prompt?.trim();
-  let userRequestPart: string | undefined;
-  if (userPrompt) {
-    userRequestPart =
-      userPrompt && args.input.mode === "free" && isShortUserPrompt(userPrompt)
-        ? `${SHORT_PROMPT_EXPANSION_PREFIX}${userPrompt}.`
-        : `User request: ${userPrompt}.`;
+  if (args.template) {
+    sceneRequest = args.template.promptSkeleton
+      ? `${partsMap?.get("user_request_prefix") ?? "User request: "}${args.template.promptSkeleton}.`
+      : undefined;
+  } else if (userPrompt) {
+    sceneRequest =
+      isShortUserPrompt(userPrompt, maxChars, maxWords)
+        ? `${partsMap?.get("short_expansion") ?? SHORT_PROMPT_EXPANSION_PREFIX}${userPrompt}.`
+        : `${partsMap?.get("user_request_prefix") ?? "User request: "}${userPrompt}.`;
   }
 
+  const enhancePortrait = args.input.enhancePortrait
+    ? (partsMap?.get("enhance_portrait") ?? ENHANCE_PORTRAIT_PROMPT)
+    : undefined;
+
   const promptParts = [
-    args.config?.basePrompt || DEFAULT_GENERATION_BASE_PROMPT,
-    args.template?.promptSkeleton ? `Template direction: ${args.template.promptSkeleton}` : undefined,
-    args.template?.title ? `Template title: ${args.template.title}.` : undefined,
-    userRequestPart,
-    `Reference photos cover ${args.profile.shots.filter((shot) => shot.status !== "missing").length} face angles.`,
-    `Profile completeness: ${args.profile.completionPercent}%.`,
+    base,
+    profileMeta,
     closedMouthRule,
-    args.input.enhancePortrait ? ENHANCE_PORTRAIT_PROMPT : undefined,
+    sceneRequest,
+    enhancePortrait,
   ].filter(Boolean);
 
   return promptParts.join(" ");

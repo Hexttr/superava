@@ -2,6 +2,7 @@ import type {
   CreateGenerationInput,
   GenerationPromptConfig,
   PhotoProfile,
+  PromptConstructorConfig,
   PromptTemplate,
   ShotType,
 } from "@superava/shared";
@@ -23,6 +24,7 @@ export interface AiImageProvider {
     profile: PhotoProfile;
     template?: PromptTemplate;
     config?: GenerationPromptConfig;
+    promptConstructor?: PromptConstructorConfig;
   }): PreparedGenerationPayload;
 }
 
@@ -34,6 +36,7 @@ export class GeminiProviderAdapter implements AiImageProvider {
     profile: PhotoProfile;
     template?: PromptTemplate;
     config?: GenerationPromptConfig;
+    promptConstructor?: PromptConstructorConfig;
   }): PreparedGenerationPayload {
     const prompt = buildGenerationPrompt(args);
 

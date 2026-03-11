@@ -5,23 +5,26 @@ import { GenerationComposer } from "@/components/generation-composer";
 import { GenerationFeed } from "@/components/generation-feed";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
 import {
+  getCategories,
   getGenerationPromptConfig,
   getGenerations,
+  getPromptConstructor,
   getProfile,
   getTemplates,
 } from "@/lib/api";
-import {
-  holidayCategoryCards,
-  templateTextBySlug,
-} from "@/lib/ui-text";
+import { categoryPreviewImageUrl } from "@/lib/api";
+import { templateTextBySlug } from "@/lib/ui-text";
 
 export default async function Home() {
-  const [profile, templates, generations, generationPromptConfig] = await Promise.all([
-    getProfile(),
-    getTemplates(),
-    getGenerations(),
-    getGenerationPromptConfig(),
-  ]);
+  const [profile, templates, generations, generationPromptConfig, promptConstructor, categories] =
+    await Promise.all([
+      getProfile(),
+      getTemplates(),
+      getGenerations(),
+      getGenerationPromptConfig(),
+      getPromptConstructor(),
+      getCategories(),
+    ]);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
@@ -120,6 +123,7 @@ export default async function Home() {
             templates={templates}
             profile={profile}
             generationPromptConfig={generationPromptConfig}
+            promptConstructor={promptConstructor ?? undefined}
             showTemplates={false}
           />
         </SectionCard>
@@ -192,10 +196,10 @@ export default async function Home() {
       <section className="mt-6">
         <SectionCard eyebrow="Категории" title="Праздничные подборки">
           <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-            {holidayCategoryCards.map((category, index) => (
+            {categories.map((category, index) => (
               <Link
-                key={category.title}
-                href={category.href ?? "/templates"}
+                key={category.id}
+                href={`/templates?category=${category.id}`}
                 className={`aspect-square overflow-hidden rounded-[1.75rem] border border-white/10 p-4 transition hover:-translate-y-0.5 hover:border-cyan-300/30 ${
                   index % 3 === 0
                     ? "bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.32),_transparent_58%),linear-gradient(160deg,_rgba(15,23,42,0.96),_rgba(91,33,182,0.38))]"
@@ -205,12 +209,17 @@ export default async function Home() {
                 }`}
               >
                 <div className="flex h-full flex-col justify-between">
-                  <StatusPill label={category.badge} tone="neutral" />
+                  {category.previewKey ? (
+                    <img
+                      src={categoryPreviewImageUrl(category.id)}
+                      alt=""
+                      className="h-12 w-12 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <StatusPill label="Категория" tone="neutral" />
+                  )}
                   <div>
-                    <p className="text-xl font-semibold text-white">{category.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-slate-200/85">
-                      {category.subtitle}
-                    </p>
+                    <p className="text-xl font-semibold text-white">{category.name}</p>
                     <p className="mt-4 text-xs font-medium uppercase tracking-[0.22em] text-cyan-200/80">
                       Открыть сцену
                     </p>

@@ -96,3 +96,11 @@ export function profileShotKey(profileId: string, shotType: string, suffix: "can
 export function generationAssetKey(requestId: string, assetId: string): string {
   return `generations/${requestId}/${assetId}.png`;
 }
+
+export function categoryPreviewKey(categoryId: string): string {
+  return `admin/categories/${categoryId}/preview.jpg`;
+}
+
+export function templatePreviewKey(templateId: string): string {
+  return `admin/templates/${templateId}/preview.jpg`;
+}
