@@ -5,12 +5,14 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import {
+  adminUserSchema,
   type AuthUser,
   authUserSchema,
   apiRoutes,
   createGenerationInputSchema,
   demoGenerationPromptConfig,
   shotTypeSchema,
+  userRoleSchema,
 } from "@superava/shared";
 import Fastify, { type FastifyRequest } from "fastify";
 import { prisma } from "./db.js";
@@ -479,6 +481,77 @@ app.patch("/api/v1/admin/prompt-parts/:key", async (request, reply) => {
     data,
   });
   return reply.send(updated);
+});
+
+// --- Admin: Users ---
+app.get("/api/v1/admin/users", async (request, reply) => {
+  const admin = await requireUser(request, reply);
+  if (!admin) return;
+  if (admin.role !== "ADMIN") {
+    return reply.status(403).send({ error: "forbidden" });
+  }
+
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      emailVerified: true,
+      createdAt: true,
+    },
+  });
+
+  return {
+    items: users.map((user) =>
+      adminUserSchema.parse({
+        ...user,
+        createdAt: user.createdAt.toISOString(),
+      })
+    ),
+  };
+});
+
+app.patch("/api/v1/admin/users/:id", async (request, reply) => {
+  const admin = await requireUser(request, reply);
+  if (!admin) return;
+  if (admin.role !== "ADMIN") {
+    return reply.status(403).send({ error: "forbidden" });
+  }
+
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+
+  const body = request.body as { role?: string };
+  const parsedRole = userRoleSchema.safeParse(body?.role);
+  if (!parsedRole.success) {
+    return reply.status(400).send({ error: "invalid_role" });
+  }
+
+  if (admin.id === id && parsedRole.data !== "ADMIN") {
+    return reply.status(400).send({ error: "cannot_demote_self" });
+  }
+
+  const updated = await prisma.user.update({
+    where: { id },
+    data: { role: parsedRole.data },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      emailVerified: true,
+      createdAt: true,
+    },
+  });
+
+  return reply.send(
+    adminUserSchema.parse({
+      ...updated,
+      createdAt: updated.createdAt.toISOString(),
+    })
+  );
 });
 
 app.post("/api/v1/reference-photos", async (request, reply) => {

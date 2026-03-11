@@ -3,9 +3,11 @@ import Link from "next/link";
 import { SectionCard } from "@superava/ui";
 import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
+import { LogoutButton } from "@/components/logout-button";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
 import {
   getCategories,
+  getCurrentUser,
   getGenerationPromptConfig,
   getGenerations,
   getPromptConstructor,
@@ -66,8 +68,9 @@ const CATEGORY_IMAGES: Record<string, string> = {
 };
 
 export default async function Home() {
-  const [profile, templates, generations, generationPromptConfig, promptConstructor, categories] =
+  const [user, profile, templates, generations, generationPromptConfig, promptConstructor, categories] =
     await Promise.all([
+      getCurrentUser(),
       getProfile(),
       getTemplates(),
       getGenerations(),
@@ -80,36 +83,63 @@ export default async function Home() {
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
       {/* Hero */}
       <section className="rounded-[2.25rem] border border-white/10 bg-white/5 p-6 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8 lg:p-10">
-        <div className="max-w-3xl">
-          <div className="flex items-center gap-2.5">
-            <LogoIcon />
-            <span className="text-xl font-semibold tracking-tight text-fuchsia-300">
-              newava.pro
-            </span>
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex items-center gap-2.5">
+              <LogoIcon />
+              <span className="text-xl font-semibold tracking-tight text-fuchsia-300">
+                newava.pro
+              </span>
+            </div>
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Один профиль лица.
+              <br />
+              Любые красивые сцены под твой стиль.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
+              newava.pro превратит это в фотоконтент, который выглядит цельно и персонально.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/onboarding"
+                className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
+              >
+                Собрать профиль
+              </Link>
+              <Link
+                href="/templates"
+                style={{ color: "#0f172a" }}
+                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold transition hover:bg-white/90"
+              >
+                Готовые сцены
+              </Link>
+            </div>
           </div>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Один профиль лица.
-            <br />
-            Любые красивые сцены под твой стиль.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-            Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
-            newava.pro превратит это в фотоконтент, который выглядит цельно и персонально.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
-            >
-              Собрать профиль
-            </Link>
-            <Link
-              href="/templates"
-              style={{ color: "#0f172a" }}
-              className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold transition hover:bg-white/90"
-            >
-              Готовые сцены
-            </Link>
+          <div className="w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5">
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-fuchsia-300">
+              Аккаунт
+            </p>
+            <p className="mt-3 text-lg font-semibold text-white">
+              {user?.name ?? user?.email ?? "Пользователь"}
+            </p>
+            <p className="mt-1 text-sm text-slate-400">{user?.email ?? "Email не указан"}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-fuchsia-400/25 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold text-fuchsia-200">
+                {user?.role ?? "USER"}
+              </span>
+              {user?.role === "ADMIN" ? (
+                <Link
+                  href="/admin"
+                  className="inline-flex items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/15"
+                >
+                  Открыть админку
+                </Link>
+              ) : null}
+            </div>
+            <div className="mt-5">
+              <LogoutButton />
+            </div>
           </div>
         </div>
       </section>

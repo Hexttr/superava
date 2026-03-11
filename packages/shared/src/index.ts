@@ -38,6 +38,13 @@ export const authUserSchema = z.object({
 
 export type AuthUser = z.infer<typeof authUserSchema>;
 
+export const adminUserSchema = authUserSchema.extend({
+  emailVerified: z.boolean(),
+  createdAt: z.string(),
+});
+
+export type AdminUser = z.infer<typeof adminUserSchema>;
+
 export const profileShotSchema = z.object({
   id: z.string(),
   type: shotTypeSchema,

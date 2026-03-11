@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 import { requireAdminUser } from "@/lib/server-api";
 
 const navItems = [
@@ -49,6 +50,12 @@ export default async function AdminLayout({
               {item.label}
             </Link>
           ))}
+          <div className="mt-4">
+            <LogoutButton
+              redirectTo="/login"
+              className="inline-flex w-full items-center justify-center rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/6 disabled:opacity-70"
+            />
+          </div>
         </div>
       </aside>
       <main className="flex-1 p-6">{children}</main>

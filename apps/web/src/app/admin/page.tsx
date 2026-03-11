@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { getAdminUsers } from "@/lib/server-api";
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const users = await getAdminUsers();
+  const adminCount = users.filter((user) => user.role === "ADMIN").length;
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-white">Дашборд</h1>
@@ -35,10 +39,15 @@ export default function AdminDashboardPage() {
             Части конструктора промптов
           </p>
         </Link>
-        <div className="rounded-xl border border-white/5 bg-slate-950/30 p-4 opacity-75">
-          <p className="font-medium text-slate-400">Пользователи</p>
-          <p className="mt-1 text-sm text-slate-500">Скоро</p>
-        </div>
+        <Link
+          href="/admin/users"
+          className="rounded-xl border border-white/10 bg-slate-950/55 p-4 transition hover:border-cyan-400/30"
+        >
+          <p className="font-medium text-white">Пользователи</p>
+          <p className="mt-1 text-sm text-slate-400">
+            {users.length} всего · {adminCount} админов
+          </p>
+        </Link>
         <div className="rounded-xl border border-white/5 bg-slate-950/30 p-4 opacity-75">
           <p className="font-medium text-slate-400">Биллинг</p>
           <p className="mt-1 text-sm text-slate-500">Скоро</p>

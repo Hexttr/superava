@@ -1,3 +1,5 @@
+import { adminUserSchema, userRoleSchema, type AdminUser, type UserRole } from "@superava/shared";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
 export interface Category {
@@ -28,6 +30,8 @@ export interface PromptPart {
   value: string;
   sortOrder: number;
 }
+
+export type { AdminUser, UserRole };
 
 async function adminFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -163,6 +167,18 @@ export async function updatePromptPart(
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const data = await adminFetch<{ items?: unknown[] }>("/api/v1/admin/users");
+  return (data.items ?? []).map((item) => adminUserSchema.parse(item));
+}
+
+export async function updateAdminUserRole(id: string, role: UserRole): Promise<AdminUser> {
+  return adminFetch<AdminUser>(`/api/v1/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role: userRoleSchema.parse(role) }),
+  }).then((item) => adminUserSchema.parse(item));
 }
 
 export function categoryPreviewUrl(id: string): string {

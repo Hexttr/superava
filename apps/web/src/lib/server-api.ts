@@ -1,4 +1,5 @@
 import {
+  adminUserSchema,
   apiRoutes,
   authUserSchema,
   generationPromptConfigSchema,
@@ -7,6 +8,7 @@ import {
   promptConstructorConfigSchema,
   promptTemplateSchema,
   type AuthUser,
+  type AdminUser,
   type GenerationPromptConfig,
   type GenerationRecord,
   type PhotoProfile,
@@ -188,5 +190,21 @@ export async function getAdminPromptParts(): Promise<PromptPart[]> {
   return parseJson(response, (value) => {
     const parsed = value as { items?: PromptPart[] };
     return parsed.items ?? [];
+  });
+}
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const response = await serverFetch("/api/v1/admin/users");
+
+  if (response.status === 401) {
+    redirect("/login");
+  }
+  if (response.status === 403) {
+    redirect("/");
+  }
+
+  return parseJson(response, (value) => {
+    const parsed = value as { items?: unknown[] };
+    return (parsed.items ?? []).map((item) => adminUserSchema.parse(item));
   });
 }
