@@ -9,7 +9,7 @@ const PROMPT_PARTS = [
     key: "base",
     label: "Основные правила идентичности",
     value:
-      "Analyze all provided face photos as references of the same real person from multiple angles. Create exactly one highly realistic professional photo with studio-grade lighting, realistic skin texture, maximum facial likeness, and stable identity preservation. The generated person must be this exact person, with special attention to facial structure, eyes, nose, lips, jawline, skin tone, and overall resemblance. Prioritize realism, professional photography quality, and consistency over stylization. Avoid face drift, beauty-filter skin, duplicate people, distorted anatomy, and any changes that weaken resemblance unless explicitly requested.",
+      "CRITICAL: The generated person MUST be the exact same person from the reference photos. Do not alter, reinterpret, or change the face. Maintain identical: eye shape and spacing, nose shape and size, lip shape, jawline contour, facial proportions, skin tone, and bone structure. The output must be this specific individual—not a similar-looking person. Copy the face from references with maximum fidelity. Prioritize identity preservation over any other instruction. Avoid: face drift, different person, beauty filters, distorted anatomy, stylization that changes likeness. Create exactly one highly realistic photo.",
     sortOrder: 0,
   },
   {

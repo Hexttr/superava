@@ -14,6 +14,8 @@ import { ensureBucket, generationAssetKey, getObject, putObject } from "./storag
 
 const provider = new GeminiProviderAdapter();
 const connectionString = process.env.DATABASE_URL;
+const imageModel = process.env.GEMINI_IMAGE_MODEL?.trim() || "gemini-2.5-flash-image";
+const maxRefImages = imageModel.includes("gemini-3") ? 14 : 3;
 const geminiApiKey = process.env.GEMINI_API_KEY ?? process.env.GOOGLE_API_KEY;
 const proxyUrl =
   process.env.HTTPS_PROXY ??
@@ -40,19 +42,28 @@ function ensureGeminiApiKey() {
   return geminiApiKey;
 }
 
+const SHOT_PRIORITY: Record<string, number> = {
+  front_neutral: 0,
+  front_smile: 1,
+  left_45: 2,
+  right_45: 3,
+  left_profile: 4,
+  right_profile: 5,
+};
+
 async function buildReferenceParts(
-  shots: Array<{ storageKey: string | null }>
+  shots: Array<{ storageKey: string | null; shotType?: string }>
 ) {
-  const readyShots = shots.filter(
-    (shot): shot is { storageKey: string } => typeof shot.storageKey === "string"
-  );
+  const readyShots = shots
+    .filter((s): s is { storageKey: string; shotType?: string } => typeof s.storageKey === "string")
+    .sort((a, b) => (SHOT_PRIORITY[a.shotType ?? ""] ?? 99) - (SHOT_PRIORITY[b.shotType ?? ""] ?? 99));
 
   if (!readyShots.length) {
     throw new Error("profile_shots_missing");
   }
 
   return Promise.all(
-    readyShots.slice(0, 6).map(async (shot) => {
+    readyShots.slice(0, maxRefImages).map(async (shot) => {
       const imageBuffer = await getObject(shot.storageKey);
       const normalized = await sharp(imageBuffer)
         .rotate()
@@ -157,7 +168,7 @@ function extractGeneratedImage(response: any) {
 async function renderGenerationImage(args: {
   model: string;
   prompt: string;
-  shots: Array<{ storageKey: string | null }>;
+  shots: Array<{ storageKey: string | null; shotType?: string }>;
 }) {
   const apiKey = ensureGeminiApiKey();
   const referenceParts = await buildReferenceParts(args.shots);
@@ -275,9 +286,12 @@ async function runReferenceJob(
   });
 
   const generated = await renderGenerationImage({
-    model: "gemini-2.5-flash-image",
+    model: imageModel,
     prompt,
-    shots: profile.shots.map((s: { storageKey: string | null }) => ({ storageKey: s.storageKey })),
+    shots: profile.shots.map((s: { storageKey: string | null; shotType: string }) => ({
+      storageKey: s.storageKey,
+      shotType: s.shotType,
+    })),
   });
 
   await prisma.generationRequest.update({
@@ -402,10 +416,11 @@ async function runJob(payload: {
   });
 
   const generated = await renderGenerationImage({
-    model: prepared.model,
+    model: imageModel,
     prompt: prepared.prompt,
-    shots: profile.shots.map((shot: { storageKey: string | null }) => ({
+    shots: profile.shots.map((shot: { storageKey: string | null; shotType: string }) => ({
       storageKey: shot.storageKey,
+      shotType: shot.shotType,
     })),
   });
 
