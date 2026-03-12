@@ -1,0 +1,18 @@
+[Unit]
+Description=Superava Worker
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=superava
+Group=superava
+WorkingDirectory=/opt/superava
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/superava/.env.production
+ExecStart=/usr/bin/env pnpm --filter @superava/worker start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+[Unit]
+Description=Superava Web
+After=network.target superava-api.service
+Wants=superava-api.service
+
+[Service]
+Type=simple
+User=superava
+Group=superava
+WorkingDirectory=/opt/superava
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/superava/.env.production
+ExecStart=/usr/bin/env pnpm --filter @superava/web exec next start --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
