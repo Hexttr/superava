@@ -131,7 +131,7 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
     const version = shot.previewVersion
       ? `?v=${encodeURIComponent(shot.previewVersion)}`
       : "";
-    return `/api/profile-preview/${shot.type}${version}`;
+    return `${shot.previewUrl}${version}`;
   }
 
   return (

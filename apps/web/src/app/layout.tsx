@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "newava.pro",
+  title: "superava",
   description: "Создание фото с персональным профилем лица.",
 };
 

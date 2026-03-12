@@ -3,13 +3,18 @@ import { NextRequest } from "next/server";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ generationId: string }> }
 ) {
   const { generationId } = await context.params;
   const response = await fetch(
     `${API_URL}/api/v1/generations/${generationId}/preview`,
-    { cache: "no-store" }
+    {
+      cache: "no-store",
+      headers: {
+        cookie: request.headers.get("cookie") ?? "",
+      },
+    }
   );
 
   if (!response.ok) {

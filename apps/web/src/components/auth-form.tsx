@@ -8,6 +8,31 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001";
 
 type AuthFormMode = "login" | "register";
 
+function normalizeAuthError(message: string, mode: AuthFormMode) {
+  switch (message) {
+    case "invalid_credentials":
+      return "Неверный email или пароль.";
+    case "account_blocked":
+      return "Аккаунт заблокирован. Обратитесь к администратору.";
+    case "email_taken":
+      return "Этот email уже зарегистрирован.";
+    case "password_too_short":
+      return "Пароль должен содержать не менее 6 символов.";
+    case "invalid_email":
+      return "Введите корректный email.";
+    case "email_and_password_required":
+      return "Введите email и пароль.";
+    case "too_many_attempts":
+      return "Слишком много попыток. Попробуйте позже.";
+    case "auth_failed":
+      return mode === "login"
+        ? "Не удалось выполнить вход. Попробуйте еще раз."
+        : "Не удалось создать аккаунт. Попробуйте еще раз.";
+    default:
+      return message || "Произошла ошибка. Попробуйте еще раз.";
+  }
+}
+
 export function AuthForm({ mode }: { mode: AuthFormMode }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -42,7 +67,12 @@ export function AuthForm({ mode }: { mode: AuthFormMode }) {
         router.push("/");
         router.refresh();
       } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Не удалось выполнить вход.");
+        setMessage(
+          normalizeAuthError(
+            error instanceof Error ? error.message : "auth_failed",
+            mode
+          )
+        );
       }
     });
   }
@@ -53,7 +83,7 @@ export function AuthForm({ mode }: { mode: AuthFormMode }) {
         {isLogin ? "Вход" : "Регистрация"}
       </p>
       <h1 className="mt-3 text-3xl font-semibold text-white">
-        {isLogin ? "Войти в newava.pro" : "Создать аккаунт"}
+        {isLogin ? "Войти в superava" : "Создать аккаунт"}
       </h1>
       <p className="mt-2 text-sm text-slate-400">
         {isLogin

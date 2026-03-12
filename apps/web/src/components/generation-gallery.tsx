@@ -103,7 +103,7 @@ export function GenerationGallery(props: {
             "imageDataUrl" in generation && typeof generation.imageDataUrl === "string"
               ? generation.imageDataUrl
               : generation.previewUrl
-                ? `/api/generation-preview/${generation.id}`
+                ? generation.previewUrl
                 : null;
 
           return (

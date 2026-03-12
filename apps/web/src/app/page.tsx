@@ -111,7 +111,7 @@ export default async function Home() {
             <div className="flex items-center gap-2.5">
               <LogoIcon />
               <span className="text-xl font-semibold tracking-tight text-fuchsia-300">
-                newava.pro
+                superava
               </span>
             </div>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -121,7 +121,7 @@ export default async function Home() {
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
               Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
-              newava.pro превратит это в фотоконтент, который выглядит цельно и персонально.
+              superava превратит это в фотоконтент, который выглядит цельно и персонально.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link

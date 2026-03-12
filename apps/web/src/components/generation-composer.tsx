@@ -461,7 +461,7 @@ function getShotPreviewSrc(shot: PhotoProfile["shots"][number]) {
   const version = shot.previewVersion
     ? `?v=${encodeURIComponent(shot.previewVersion)}`
     : "";
-  return `/api/profile-preview/${shot.type}${version}`;
+  return `${shot.previewUrl}${version}`;
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
