@@ -43,13 +43,13 @@ export async function sendVerificationEmail(
   const verifyUrl = `${appConfig.authPublicUrl.replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(token)}`;
   return sendAuthEmail({
     to: email,
-    subject: "Verify your newava.pro email",
+    subject: "Подтвердите email в superava.ru",
     debugLabel: "verify-email",
     debugUrl: verifyUrl,
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Подтвердите email</h2>
-        <p>Нажмите на кнопку ниже, чтобы подтвердить email в newava.pro.</p>
+        <p>Нажмите на кнопку ниже, чтобы подтвердить email в superava.ru.</p>
         <p><a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#d946ef;color:#fff;border-radius:999px;text-decoration:none;">Подтвердить email</a></p>
         <p>Если кнопка не открывается, используйте ссылку:</p>
         <p><a href="${verifyUrl}">${verifyUrl}</a></p>
@@ -65,13 +65,13 @@ export async function sendPasswordResetEmail(
   const resetUrl = `${appConfig.authPublicUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(token)}`;
   return sendAuthEmail({
     to: email,
-    subject: "Reset your newava.pro password",
+    subject: "Сброс пароля в superava.ru",
     debugLabel: "reset-password",
     debugUrl: resetUrl,
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Сброс пароля</h2>
-        <p>Нажмите на кнопку ниже, чтобы задать новый пароль для аккаунта newava.pro.</p>
+        <p>Нажмите на кнопку ниже, чтобы задать новый пароль для аккаунта superava.ru.</p>
         <p><a href="${resetUrl}" style="display:inline-block;padding:12px 18px;background:#d946ef;color:#fff;border-radius:999px;text-decoration:none;">Сбросить пароль</a></p>
         <p>Если кнопка не открывается, используйте ссылку:</p>
         <p><a href="${resetUrl}">${resetUrl}</a></p>
