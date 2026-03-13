@@ -52,14 +52,19 @@ export interface AdminAppConfig {
 export type { AdminUser, UserRole, UserStatus };
 
 async function adminFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = {
+    ...((options?.headers as Record<string, string> | undefined) ?? {}),
+  };
+  const hasBody = options?.body !== undefined && options?.body !== null;
+  if (hasBody && !(options.body instanceof FormData)) {
+    headers["content-type"] = "application/json";
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     cache: "no-store",
     credentials: "include",
-    headers: {
-      "content-type": "application/json",
-      ...options?.headers,
-    },
+    headers,
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -227,6 +232,12 @@ export async function updateAdminUserAccess(
       status: data.status ? userStatusSchema.parse(data.status) : undefined,
     }),
   }).then((item) => adminUserSchema.parse(item));
+}
+
+export async function deleteAdminUser(id: string): Promise<void> {
+  await adminFetch(`/api/v1/admin/users/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export function categoryPreviewUrl(id: string): string {

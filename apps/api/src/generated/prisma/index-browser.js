@@ -164,6 +164,20 @@ exports.Prisma.SessionScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.AuthIdentityScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  provider: 'provider',
+  providerUserId: 'providerUserId',
+  providerEmail: 'providerEmail',
+  providerEmailVerified: 'providerEmailVerified',
+  displayName: 'displayName',
+  avatarUrl: 'avatarUrl',
+  rawProfileJson: 'rawProfileJson',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.EmailVerificationTokenScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -361,6 +375,14 @@ exports.UserStatus = exports.$Enums.UserStatus = {
   BLOCKED: 'BLOCKED'
 };
 
+exports.AuthProvider = exports.$Enums.AuthProvider = {
+  YANDEX: 'YANDEX',
+  VK: 'VK',
+  TELEGRAM: 'TELEGRAM',
+  MAILRU: 'MAILRU',
+  OK: 'OK'
+};
+
 exports.CurrencyCode = exports.$Enums.CurrencyCode = {
   RUB: 'RUB'
 };
@@ -415,6 +437,7 @@ exports.Prisma.ModelName = {
   WorkerHeartbeat: 'WorkerHeartbeat',
   User: 'User',
   Session: 'Session',
+  AuthIdentity: 'AuthIdentity',
   EmailVerificationToken: 'EmailVerificationToken',
   PasswordResetToken: 'PasswordResetToken',
   BillingAccount: 'BillingAccount',

@@ -22,6 +22,14 @@ enum UserStatus {
   BLOCKED
 }
 
+enum AuthProvider {
+  YANDEX
+  VK
+  TELEGRAM
+  MAILRU
+  OK
+}
+
 enum CurrencyCode {
   RUB
 }
@@ -113,6 +121,7 @@ model User {
   profiles                PhotoProfile[]
   generations             GenerationRequest[]
   sessions                Session[]
+  authIdentities          AuthIdentity[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   billingAccount          BillingAccount?
@@ -130,6 +139,25 @@ model Session {
 
   @@index([userId])
   @@index([token])
+}
+
+model AuthIdentity {
+  id                    String       @id @default(cuid())
+  userId                String
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider              AuthProvider
+  providerUserId        String
+  providerEmail         String?
+  providerEmailVerified Boolean      @default(false)
+  displayName           String?
+  avatarUrl             String?
+  rawProfileJson        Json?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@unique([provider, providerUserId])
+  @@unique([userId, provider])
+  @@index([userId])
 }
 
 model EmailVerificationToken {

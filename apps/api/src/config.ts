@@ -57,6 +57,10 @@ function getListEnv(name: string, fallback: string[]): string[] {
   return values;
 }
 
+function getOptionalEnv(name: string): string {
+  return process.env[name]?.trim() || "";
+}
+
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const isProduction = nodeEnv === "production";
 const webOrigins = getListEnv("WEB_ORIGIN", ["http://localhost:3000"]);
@@ -87,6 +91,20 @@ export const appConfig = {
   passwordResetTtlMinutes: getNumberEnv("PASSWORD_RESET_TTL_MINUTES", 30),
   resendApiKey: process.env.RESEND_API_KEY?.trim() || "",
   mailFrom: process.env.MAIL_FROM?.trim() || "",
+  yandexClientId: getOptionalEnv("YANDEX_CLIENT_ID"),
+  yandexClientSecret: getOptionalEnv("YANDEX_CLIENT_SECRET"),
+  yandexScope: getOptionalEnv("YANDEX_SCOPE") || "login:email login:info",
+  vkClientId: getOptionalEnv("VK_CLIENT_ID"),
+  vkClientSecret: getOptionalEnv("VK_CLIENT_SECRET"),
+  vkScope: getOptionalEnv("VK_SCOPE") || "vkid.personal_info email",
+  mailruClientId: getOptionalEnv("MAILRU_CLIENT_ID"),
+  mailruClientSecret: getOptionalEnv("MAILRU_CLIENT_SECRET"),
+  mailruAuthorizeUrl: getOptionalEnv("MAILRU_AUTHORIZE_URL"),
+  mailruTokenUrl: getOptionalEnv("MAILRU_TOKEN_URL"),
+  mailruUserInfoUrl: getOptionalEnv("MAILRU_USERINFO_URL"),
+  mailruScope: getOptionalEnv("MAILRU_SCOPE"),
+  telegramBotToken: getOptionalEnv("TELEGRAM_BOT_TOKEN"),
+  telegramBotName: getOptionalEnv("TELEGRAM_BOT_NAME"),
   databaseUrl: getRequiredEnv("DATABASE_URL"),
 };
 

@@ -3,9 +3,11 @@ import Link from "next/link";
 import { SectionCard } from "@superava/ui";
 import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
+import { LinkedAuthProvidersCard } from "@/components/linked-auth-providers-card";
 import { LogoutButton } from "@/components/logout-button";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
 import { ResendVerificationButton } from "@/components/resend-verification-button";
+import { authProviderMessage, socialProviderLabel, socialProviderOrder } from "@/lib/social-auth";
 import {
   getBillingMe,
   getBillingPricing,
@@ -13,6 +15,7 @@ import {
   getCurrentUser,
   getGenerationPromptConfig,
   getGenerations,
+  getLinkedAuthProviders,
   getPromptConstructor,
   getProfile,
   getTemplates,
@@ -78,7 +81,30 @@ function formatRub(minor: number) {
   }).format(minor / 100);
 }
 
-export default async function Home() {
+function firstSearchParam(value?: string | string[]) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function Home(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const socialLinkProvider = firstSearchParam(searchParams.provider);
+  const socialLinkError = firstSearchParam(searchParams.socialLinkError);
+  const socialLinked = firstSearchParam(searchParams.socialLinked);
+  const socialLinkedProvider =
+    socialLinked &&
+    socialProviderOrder.includes(socialLinked.toUpperCase() as (typeof socialProviderOrder)[number])
+      ? socialLinked.toUpperCase()
+      : null;
+  const socialMessage = socialLinkError
+    ? authProviderMessage(socialLinkError, socialLinkProvider)
+    : socialLinkedProvider
+      ? `${socialProviderLabel(
+          socialLinkedProvider as (typeof socialProviderOrder)[number]
+        )} подключен к аккаунту.`
+      : null;
+
   const [
     user,
     billing,
@@ -89,6 +115,7 @@ export default async function Home() {
     generationPromptConfig,
     promptConstructor,
     categories,
+    linkedProviders,
   ] =
     await Promise.all([
       getCurrentUser(),
@@ -100,6 +127,7 @@ export default async function Home() {
       getGenerationPromptConfig(),
       getPromptConstructor(),
       getCategories(),
+      getLinkedAuthProviders(),
     ]);
 
   return (
@@ -181,6 +209,10 @@ export default async function Home() {
               </p>
             </div>
             {!user?.emailVerified ? <ResendVerificationButton /> : null}
+            <LinkedAuthProvidersCard
+              providers={linkedProviders}
+              initialMessage={socialMessage}
+            />
             <div className="mt-5">
               <LogoutButton />
             </div>

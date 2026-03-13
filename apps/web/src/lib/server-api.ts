@@ -6,6 +6,7 @@ import {
   billingPricingSchema,
   generationPromptConfigSchema,
   generationRecordSchema,
+  linkedAuthProvidersResponseSchema,
   photoProfileSchema,
   promptConstructorConfigSchema,
   promptTemplateSchema,
@@ -15,6 +16,7 @@ import {
   type BillingPricing,
   type GenerationPromptConfig,
   type GenerationRecord,
+  type LinkedAuthProvider,
   type PhotoProfile,
   type PromptConstructorConfig,
   type PromptTemplate,
@@ -99,6 +101,18 @@ export async function getProfile(): Promise<PhotoProfile> {
   }
 
   return parseJson(response, (value) => photoProfileSchema.parse(value));
+}
+
+export async function getLinkedAuthProviders(): Promise<LinkedAuthProvider[]> {
+  const response = await serverFetch(apiRoutes.authProviders);
+
+  if (response.status === 401) {
+    redirect("/login");
+  }
+
+  return parseJson(response, (value) =>
+    linkedAuthProvidersResponseSchema.parse(value).items
+  );
 }
 
 export async function getTemplates(): Promise<PromptTemplate[]> {

@@ -68,6 +68,7 @@ import {
   sendPasswordResetEmail,
   sendVerificationEmail,
 } from "./auth/email.js";
+import { registerSocialAuthRoutes } from "./auth/social-routes.js";
 
 const app = Fastify({
   logger: true,
@@ -108,6 +109,8 @@ const sessionCookieOptions = {
   secure: appConfig.isProduction,
   maxAge: appConfig.sessionMaxAgeSeconds,
 };
+
+await registerSocialAuthRoutes(app, sessionCookieOptions);
 
 // --- User Auth ---
 app.post("/api/v1/auth/register", async (request, reply) => {
@@ -848,6 +851,52 @@ app.patch("/api/v1/admin/users/:id", async (request, reply) => {
       createdAt: updated.createdAt.toISOString(),
     })
   );
+});
+
+app.delete("/api/v1/admin/users/:id", async (request, reply) => {
+  const admin = await requireUser(request, reply);
+  if (!admin) return;
+  if (admin.role !== "ADMIN") {
+    return reply.status(403).send({ error: "forbidden" });
+  }
+
+  const id = (request.params as { id?: string }).id;
+  if (!id) return reply.status(400).send({ error: "id required" });
+
+  if (admin.id === id) {
+    return reply.status(400).send({ error: "cannot_delete_self" });
+  }
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  if (!target) {
+    return reply.status(404).send({ error: "user_not_found" });
+  }
+
+  if (target.role === "ADMIN") {
+    const otherAdminsCount = await prisma.user.count({
+      where: {
+        role: "ADMIN",
+        NOT: { id },
+      },
+    });
+
+    if (otherAdminsCount === 0) {
+      return reply.status(400).send({ error: "cannot_delete_last_admin" });
+    }
+  }
+
+  await prisma.user.delete({
+    where: { id },
+  });
+
+  return reply.status(204).send();
 });
 
 app.post("/api/v1/reference-photos", async (request, reply) => {

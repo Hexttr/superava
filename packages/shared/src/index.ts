@@ -47,6 +47,15 @@ export type UserRole = z.infer<typeof userRoleSchema>;
 export const userStatusSchema = z.enum(["ACTIVE", "BLOCKED"]);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
+export const socialAuthProviderSchema = z.enum([
+  "YANDEX",
+  "VK",
+  "TELEGRAM",
+  "MAILRU",
+  "OK",
+]);
+export type SocialAuthProvider = z.infer<typeof socialAuthProviderSchema>;
+
 export const authUserSchema = z.object({
   id: z.string(),
   email: z.string().nullable(),
@@ -84,6 +93,25 @@ export const photoProfileSchema = z.object({
 });
 
 export type PhotoProfile = z.infer<typeof photoProfileSchema>;
+
+export const linkedAuthProviderSchema = z.object({
+  provider: socialAuthProviderSchema,
+  connected: z.boolean(),
+  configured: z.boolean(),
+  providerEmail: z.string().nullable().optional(),
+  providerEmailVerified: z.boolean().default(false),
+  displayName: z.string().nullable().optional(),
+  avatarUrl: z.string().nullable().optional(),
+  linkedAt: z.string().nullable().optional(),
+});
+
+export type LinkedAuthProvider = z.infer<typeof linkedAuthProviderSchema>;
+
+export const linkedAuthProvidersResponseSchema = z.object({
+  items: z.array(linkedAuthProviderSchema),
+});
+
+export type LinkedAuthProvidersResponse = z.infer<typeof linkedAuthProvidersResponseSchema>;
 
 export const promptTemplateSchema = z.object({
   id: z.string(),
@@ -487,4 +515,5 @@ export const apiRoutes = {
   templates: "/api/v1/templates",
   generations: "/api/v1/generations",
   generationPromptConfig: "/api/v1/config/generation-prompt",
+  authProviders: "/api/v1/auth/providers/me",
 } as const;

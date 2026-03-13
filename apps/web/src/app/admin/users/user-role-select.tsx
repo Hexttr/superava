@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
+  deleteAdminUser,
   updateAdminUserAccess,
   type AdminUser,
   type UserRole,
@@ -41,6 +42,48 @@ export function UserAccessControls(props: {
     });
   }
 
+  function normalizeAdminUserError(message: string) {
+    switch (message) {
+      case "cannot_delete_self":
+        return "Нельзя удалить свой собственный аккаунт.";
+      case "cannot_delete_last_admin":
+        return "Нельзя удалить последнего администратора.";
+      case "user_not_found":
+        return "Пользователь уже удален или не найден.";
+      case "cannot_demote_self":
+        return "Свой аккаунт нельзя понизить из админки.";
+      case "cannot_block_self":
+        return "Свой аккаунт нельзя заблокировать из админки.";
+      default:
+        return message || "Не удалось выполнить действие.";
+    }
+  }
+
+  function removeUser() {
+    if (
+      !window.confirm(
+        `Удалить пользователя ${props.user.email ?? props.user.name ?? props.user.id}? Это действие нельзя отменить.`
+      )
+    ) {
+      return;
+    }
+
+    setMessage(null);
+
+    startTransition(async () => {
+      try {
+        await deleteAdminUser(props.user.id);
+        router.refresh();
+      } catch (error) {
+        setMessage(
+          normalizeAdminUserError(
+            error instanceof Error ? error.message : "Не удалось удалить пользователя."
+          )
+        );
+      }
+    });
+  }
+
   return (
     <div className="flex min-w-[220px] flex-col items-end gap-2">
       <select
@@ -61,9 +104,17 @@ export function UserAccessControls(props: {
         <option value="ACTIVE">ACTIVE</option>
         <option value="BLOCKED">BLOCKED</option>
       </select>
+      <button
+        type="button"
+        disabled={isPending || props.isCurrentAdmin}
+        onClick={removeUser}
+        className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Удалить пользователя
+      </button>
       {props.isCurrentAdmin ? (
         <p className="text-xs text-slate-500">
-          Свой аккаунт нельзя понизить или заблокировать из админки.
+          Свой аккаунт нельзя понизить, заблокировать или удалить из админки.
         </p>
       ) : null}
       {message ? <p className="text-xs text-slate-400">{message}</p> : null}
