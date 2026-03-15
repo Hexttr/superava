@@ -14,9 +14,9 @@ import type {
 type Direction = "prompt" | "gallery" | "reference" | null;
 
 const DIRECTION_IMAGES = {
-  prompt: "/images/direction-prompt.png",
-  gallery: "/images/direction-gallery.png",
-  reference: "/images/direction-reference.png",
+  prompt: "/images/direction-prompt.webp",
+  gallery: "/images/direction-gallery.webp",
+  reference: "/images/direction-reference.webp",
 };
 
 export function HomeDirectionCards(props: {
@@ -45,12 +45,12 @@ export function HomeDirectionCards(props: {
               className="object-cover transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white/80">
+              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Ваш промпт
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-lg">
+              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                 Опишите сцену словами — мы создадим кадр
               </p>
             </div>
@@ -74,12 +74,12 @@ export function HomeDirectionCards(props: {
               className="object-cover transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white/80">
+              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Галерея промптов
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-lg">
+              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                 Готовые сцены — один клик
               </p>
             </div>
@@ -106,12 +106,12 @@ export function HomeDirectionCards(props: {
               className="object-cover transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white/80">
+              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Композиция из фото
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-lg">
+              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
                 Загрузите кадр — вставим вас в сцену
               </p>
             </div>
