@@ -13,10 +13,11 @@ import type {
 
 type Direction = "prompt" | "gallery" | "reference" | null;
 
+const IMG_V = "v2";
 const DIRECTION_IMAGES = {
-  prompt: "/images/direction-prompt.webp",
-  gallery: "/images/direction-gallery.webp",
-  reference: "/images/direction-reference.webp",
+  prompt: `/images/direction-prompt.webp?${IMG_V}`,
+  gallery: `/images/direction-gallery.webp?${IMG_V}`,
+  reference: `/images/direction-reference.webp?${IMG_V}`,
 };
 
 export function HomeDirectionCards(props: {
