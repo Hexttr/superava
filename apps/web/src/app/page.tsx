@@ -3,10 +3,8 @@ import Link from "next/link";
 import { SectionCard } from "@superava/ui";
 import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
-import { LinkedAuthProvidersCard } from "@/components/linked-auth-providers-card";
-import { LogoutButton } from "@/components/logout-button";
+import { AccountBlock } from "@/components/account-block";
 import { ProfileProgressLine } from "@/components/profile-progress-line";
-import { ResendVerificationButton } from "@/components/resend-verification-button";
 import { authProviderMessage, socialProviderLabel, socialProviderOrder } from "@/lib/social-auth";
 import {
   getBillingMe,
@@ -167,56 +165,18 @@ export default async function Home(props: {
               </Link>
             </div>
           </div>
-          <div className="w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-fuchsia-300">
-              Аккаунт
-            </p>
-            <p className="mt-3 text-lg font-semibold text-white">
-              {user?.name ?? user?.email ?? "Пользователь"}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">{user?.email ?? "Email не указан"}</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-fuchsia-400/25 bg-fuchsia-400/10 px-3 py-1 text-xs font-semibold text-fuchsia-200">
-                {user?.role ?? "USER"}
-              </span>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                  user?.emailVerified
-                    ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                    : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
-                }`}
-              >
-                {user?.emailVerified ? "Email verified" : "Email not verified"}
-              </span>
-              {user?.role === "ADMIN" ? (
-                <Link
-                  href="/admin"
-                  className="inline-flex items-center justify-center rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/15"
-                >
-                  Открыть админку
-                </Link>
-              ) : null}
-            </div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Баланс</p>
-              <p className="mt-2 text-2xl font-semibold text-white">
-                {formatRub(billing?.availableMinor ?? 0)}
-              </p>
-              <p className="mt-1 text-xs text-slate-400">
-                {pricing.billingEnabled
-                  ? `Текст: ${formatRub(pricing.textGenerationPriceMinor)} • Фото: ${formatRub(pricing.photoGenerationPriceMinor)}`
-                  : "Платежи пока в режиме настройки, цены уже доступны в админке."}
-              </p>
-            </div>
-            {!user?.emailVerified ? <ResendVerificationButton /> : null}
-            <LinkedAuthProvidersCard
-              providers={linkedProviders}
-              initialMessage={socialMessage}
+          {user ? (
+            <AccountBlock
+              user={user}
+              billingAvailableMinor={billing?.availableMinor ?? 0}
+              billingEnabled={pricing.billingEnabled}
+              textPrice={formatRub(pricing.textGenerationPriceMinor)}
+              photoPrice={formatRub(pricing.photoGenerationPriceMinor)}
+              billingNote="Платежи пока в режиме настройки, цены уже доступны в админке."
+              linkedProviders={linkedProviders}
+              socialMessage={socialMessage}
             />
-            <div className="mt-5">
-              <LogoutButton />
-            </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
