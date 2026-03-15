@@ -79,12 +79,12 @@ try:
     run(client, f"test -d {quote_single(repo_dir)}", "repo dir exists", timeout=20)
     dirty = run(
         client,
-        app_shell("git status --porcelain"),
-        "ensure remote worktree clean",
+        app_shell("git status --porcelain --untracked-files=no"),
+        "ensure remote tracked worktree clean",
         timeout=30,
     )
     if dirty.strip():
-        raise RuntimeError("Remote repository has uncommitted changes. Aborting deploy.")
+        raise RuntimeError("Remote repository has tracked uncommitted changes. Aborting deploy.")
 
     run(client, app_shell("git fetch origin main"), "fetch origin", timeout=120)
     run(
