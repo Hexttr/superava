@@ -42,8 +42,9 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.prompt}
               alt=""
               fill
-              className="object-contain object-top transition group-hover:scale-105"
+              className="object-contain object-top"
               sizes="(max-width: 640px) 100vw, 33vw"
+              style={{ objectFit: "contain", objectPosition: "top" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
@@ -71,8 +72,9 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.gallery}
               alt=""
               fill
-              className="object-contain object-top transition group-hover:scale-105"
+              className="object-contain object-top"
               sizes="(max-width: 640px) 100vw, 33vw"
+              style={{ objectFit: "contain", objectPosition: "top" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
@@ -103,8 +105,9 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.reference}
               alt=""
               fill
-              className="object-contain object-top transition group-hover:scale-105"
+              className="object-contain object-top"
               sizes="(max-width: 640px) 100vw, 33vw"
+              style={{ objectFit: "contain", objectPosition: "top" }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
