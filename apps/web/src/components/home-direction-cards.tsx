@@ -37,7 +37,7 @@ export function HomeDirectionCards(props: {
             selected === "prompt" ? "ring-2 ring-fuchsia-400/50" : ""
           }`}
         >
-          <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+          <div className="relative aspect-square overflow-hidden bg-slate-900">
             <Image
               src={DIRECTION_IMAGES.prompt}
               alt=""
@@ -66,7 +66,7 @@ export function HomeDirectionCards(props: {
           href="/templates"
           className="group overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60 text-left transition hover:border-violet-400/40 hover:shadow-lg hover:shadow-violet-500/10"
         >
-          <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+          <div className="relative aspect-square overflow-hidden bg-slate-900">
             <Image
               src={DIRECTION_IMAGES.gallery}
               alt=""
@@ -98,7 +98,7 @@ export function HomeDirectionCards(props: {
             selected === "reference" ? "ring-2 ring-rose-400/50" : ""
           }`}
         >
-          <div className="relative aspect-[4/3] overflow-hidden bg-slate-900">
+          <div className="relative aspect-square overflow-hidden bg-slate-900">
             <Image
               src={DIRECTION_IMAGES.reference}
               alt=""
