@@ -42,12 +42,12 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.prompt}
               alt=""
               fill
-              className="object-cover object-top transition group-hover:scale-105"
+              className="object-cover object-bottom transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="inline-flex w-fit rounded-full border border-fuchsia-400/30 bg-fuchsia-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
                 Ваш промпт
               </span>
               <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
@@ -71,12 +71,12 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.gallery}
               alt=""
               fill
-              className="object-cover object-top transition group-hover:scale-105"
+              className="object-cover object-bottom transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="inline-flex w-fit rounded-full border border-fuchsia-400/30 bg-fuchsia-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
                 Галерея промптов
               </span>
               <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
@@ -103,12 +103,12 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.reference}
               alt=""
               fill
-              className="object-cover object-top transition group-hover:scale-105"
+              className="object-cover object-bottom transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="inline-flex w-fit rounded-full border border-fuchsia-400/30 bg-fuchsia-500/20 px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]">
                 Композиция из фото
               </span>
               <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
