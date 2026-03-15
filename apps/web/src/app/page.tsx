@@ -192,14 +192,27 @@ export default async function Home(props: {
 
       {/* 3 direction cards + forms */}
       <section className="mt-6">
-        <SectionCard title="Выберите способ">
-          <HomeDirectionCards
-            profile={profile}
-            templates={templates}
-            generationPromptConfig={generationPromptConfig}
-            promptConstructor={promptConstructor ?? undefined}
-          />
-        </SectionCard>
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-[0_12px_60px_rgba(17,24,39,0.16)] backdrop-blur sm:p-6">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.26em] text-fuchsia-300">
+              Выберите способ
+            </p>
+            <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
+              И получите свой идеальный кадр
+            </h2>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+              Готовы проявить фантазию?
+            </p>
+          </div>
+          <div className="mt-6">
+            <HomeDirectionCards
+              profile={profile}
+              templates={templates}
+              generationPromptConfig={generationPromptConfig}
+              promptConstructor={promptConstructor ?? undefined}
+            />
+          </div>
+        </div>
       </section>
 
       {/* My generations */}

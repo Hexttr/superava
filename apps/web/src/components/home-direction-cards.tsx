@@ -42,22 +42,22 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.prompt}
               alt=""
               fill
-              className="object-cover transition group-hover:scale-105"
+              className="object-cover object-top transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Ваш промпт
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                Опишите сцену словами — мы создадим кадр
+              <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                Опишите сцену своими словами — получите красивый кадр
               </p>
             </div>
           </div>
           <div className="p-4">
             <p className="text-sm text-slate-400">
-              Текстовое описание → генерация с вашим лицом
+              Текстовое описание — генерация с вашим лицом
             </p>
           </div>
         </button>
@@ -71,22 +71,22 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.gallery}
               alt=""
               fill
-              className="object-cover transition group-hover:scale-105"
+              className="object-cover object-top transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Галерея промптов
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                Готовые сцены — один клик
+              <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                Выберите сцену и мы идеально впишем вас в неё!
               </p>
             </div>
           </div>
           <div className="p-4">
             <p className="text-sm text-slate-400">
-              Шаблоны праздников, портретов и сцен
+              Шаблоны праздников и просто невероятные снимки с вами!
             </p>
           </div>
         </Link>
@@ -103,22 +103,22 @@ export function HomeDirectionCards(props: {
               src={DIRECTION_IMAGES.reference}
               alt=""
               fill
-              className="object-cover transition group-hover:scale-105"
+              className="object-cover object-top transition group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, 33vw"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-slate-950/20" />
             <div className="absolute inset-0 flex flex-col justify-between p-5">
-              <span className="text-xs font-medium uppercase tracking-widest text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <span className="text-xs font-medium uppercase tracking-widest text-fuchsia-200 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 Композиция из фото
               </span>
-              <p className="text-lg font-semibold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                Загрузите кадр — вставим вас в сцену
+              <p className="text-lg font-semibold text-fuchsia-100 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                Загрузите свой кадр и на нём окажетесь вы
               </p>
             </div>
           </div>
           <div className="p-4">
             <p className="text-sm text-slate-400">
-              Анализ сцены → замена лица на ваше
+              Проанализируем сцену и впишем вас в похожее окружение
             </p>
           </div>
         </button>
