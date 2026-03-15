@@ -34,20 +34,6 @@ function formatRub(minor: number) {
   }).format(minor / 100);
 }
 
-function getInitials(name: string | null, email: string | null): string {
-  if (name && name.trim()) {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase().slice(0, 2);
-    }
-    return name.slice(0, 2).toUpperCase();
-  }
-  if (email) {
-    return email[0].toUpperCase();
-  }
-  return "?";
-}
-
 export function AccountBlock(props: {
   user: AuthUser;
   billingAvailableMinor: number;
@@ -59,7 +45,6 @@ export function AccountBlock(props: {
   socialMessage?: string | null;
 }) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
   const [message, setMessage] = useState<string | null>(props.socialMessage ?? null);
   const [isPending, startTransition] = useTransition();
 
@@ -101,33 +86,14 @@ export function AccountBlock(props: {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5">
-      {/* Compact: avatar, name, balance, logout */}
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-fuchsia-500/20 text-lg font-semibold text-fuchsia-200">
-          {getInitials(props.user.name, props.user.email)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-white">{displayName}</p>
-          <p className="mt-0.5 text-2xl font-semibold text-white">
-            {formatRub(props.billingAvailableMinor)}
-          </p>
-        </div>
+    <div className="relative w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5">
+      {/* Header: large nickname + red cross top-right */}
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-2xl font-semibold text-white">{displayName}</p>
+        <LogoutButton iconOnly />
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <LogoutButton className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6" />
-        <button
-          type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10"
-        >
-          {expanded ? "Свернуть" : "Подробнее"}
-        </button>
-      </div>
-
-      {expanded ? (
-        <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
+      <div className="mt-5 space-y-4">
           {/* Email (masked) */}
           {email ? (
             <p className="text-sm text-slate-400" title={email}>
@@ -233,8 +199,7 @@ export function AccountBlock(props: {
               })}
             </div>
           </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }

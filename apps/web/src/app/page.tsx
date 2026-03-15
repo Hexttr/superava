@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { SectionCard } from "@superava/ui";
+import { AuthPageBackground } from "@/components/auth-page-background";
+import { ArrowRightIcon, GalleryIcon, UploadIcon } from "@/components/ui-icons";
 import { GenerationGallery } from "@/components/generation-gallery";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
 import { AccountBlock } from "@/components/account-block";
@@ -129,7 +131,9 @@ export default async function Home(props: {
     ]);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
+    <>
+      <AuthPageBackground />
+      <main className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-5 sm:px-6 lg:px-8">
       {/* Hero */}
       <section className="rounded-[2.25rem] border border-white/10 bg-white/5 p-6 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8 lg:p-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
@@ -140,10 +144,10 @@ export default async function Home(props: {
                 superava
               </span>
             </div>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Один профиль лица.
+            <h1 className="mt-5 text-2xl font-semibold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
+              Загрузи свои фото и наслаждайся
               <br />
-              Любые красивые сцены под твой стиль.
+              супер аватарками
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
               Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
@@ -152,15 +156,17 @@ export default async function Home(props: {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/onboarding"
-                className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
               >
+                <UploadIcon />
                 Собрать профиль
               </Link>
               <Link
                 href="/templates"
                 style={{ color: "#0f172a" }}
-                className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white px-6 py-3 text-sm font-semibold transition hover:bg-white/90"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white px-6 py-3 text-sm font-semibold transition hover:bg-white/90"
               >
+                <GalleryIcon />
                 Готовые сцены
               </Link>
             </div>
@@ -232,8 +238,9 @@ export default async function Home(props: {
           <div className="mt-5">
             <Link
               href="/generations"
-              className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
             >
+              <GalleryIcon />
               Все изображения
             </Link>
           </div>
@@ -250,7 +257,7 @@ export default async function Home(props: {
                 <Link
                   key={category.id}
                   href={`/templates?category=${category.id}`}
-                  className="group relative aspect-square overflow-hidden rounded-[1.75rem] border border-white/10 transition hover:-translate-y-0.5 hover:border-fuchsia-300/30"
+                  className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10 transition hover:-translate-y-0.5 hover:border-fuchsia-300/30"
                 >
                   {imageSrc ? (
                     <>
@@ -269,8 +276,9 @@ export default async function Home(props: {
                     <p className="text-xl font-semibold text-white drop-shadow-lg">
                       {category.name}
                     </p>
-                    <p className="mt-2 text-xs font-medium uppercase tracking-[0.22em] text-fuchsia-200/90">
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.22em] text-fuchsia-200/90">
                       Открыть подборку
+                      <ArrowRightIcon className="h-3 w-3" />
                     </p>
                   </div>
                 </Link>
@@ -279,6 +287,7 @@ export default async function Home(props: {
           </div>
         </SectionCard>
       </section>
-    </main>
+      </main>
+    </>
   );
 }
