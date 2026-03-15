@@ -94,15 +94,22 @@ export function AccountBlock(props: {
       </div>
 
       <div className="mt-5 space-y-4">
-          {/* Email (masked) */}
-          {email ? (
-            <p className="text-sm text-slate-400" title={email}>
-              {maskEmail(email)}
-            </p>
-          ) : null}
-
-          {/* Badges: only ADMIN, verification */}
-          <div className="flex flex-wrap gap-2">
+          {/* Email + verification badge on one line */}
+          <div className="flex flex-wrap items-center gap-2">
+            {email ? (
+              <span className="text-sm text-slate-400" title={email}>
+                {maskEmail(email)}
+              </span>
+            ) : null}
+            <span
+              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                props.user.emailVerified
+                  ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
+                  : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
+              }`}
+            >
+              {props.user.emailVerified ? "Email подтверждён" : "Email не подтверждён"}
+            </span>
             {isAdmin ? (
               <Link
                 href="/admin"
@@ -111,15 +118,6 @@ export function AccountBlock(props: {
                 Админка
               </Link>
             ) : null}
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                props.user.emailVerified
-                  ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                  : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
-              }`}
-            >
-              {props.user.emailVerified ? "Email подтверждён" : "Email не подтверждён"}
-            </span>
           </div>
 
           {/* Balance details */}
@@ -139,9 +137,6 @@ export function AccountBlock(props: {
 
           {/* Social icons row */}
           <div>
-            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-slate-500">
-              Связанные соцсети
-            </p>
             {message ? (
               <div className="mb-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
                 {message}
