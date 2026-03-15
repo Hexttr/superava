@@ -13,6 +13,7 @@ password = os.environ.get("DEPLOY_PASSWORD")
 key_path = os.environ.get("DEPLOY_KEY_PATH")
 repo_dir = os.environ.get("DEPLOY_REPO_DIR", "/opt/superava")
 app_user = os.environ.get("DEPLOY_APP_USER", "superava")
+api_port = os.environ.get("DEPLOY_API_PORT", "4001")
 
 if not password and not key_path:
     print(
@@ -68,7 +69,7 @@ try:
         ),
         (
             "ready",
-            "curl -fsS http://127.0.0.1:4000/ready",
+            f"curl -fsS http://127.0.0.1:{api_port}/ready",
         ),
     ]
 

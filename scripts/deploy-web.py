@@ -7,10 +7,12 @@ Expected env:
 - DEPLOY_PASSWORD or DEPLOY_KEY_PATH
 - DEPLOY_REPO_DIR (default: /opt/superava)
 - DEPLOY_APP_USER (default: superava)
-- DEPLOY_HEALTH_URL (default: http://127.0.0.1:4000/health)
-- DEPLOY_READY_URL (default: http://127.0.0.1:4000/ready)
+- DEPLOY_API_PORT (default: 4001)
+- DEPLOY_HEALTH_URL (default: http://127.0.0.1:${DEPLOY_API_PORT}/health)
+- DEPLOY_READY_URL (default: http://127.0.0.1:${DEPLOY_API_PORT}/ready)
 """
 import os
+import time
 import sys
 import paramiko
 
@@ -23,8 +25,9 @@ password = os.environ.get("DEPLOY_PASSWORD")
 key_path = os.environ.get("DEPLOY_KEY_PATH")
 repo_dir = os.environ.get("DEPLOY_REPO_DIR", "/opt/superava")
 app_user = os.environ.get("DEPLOY_APP_USER", "superava")
-health_url = os.environ.get("DEPLOY_HEALTH_URL", "http://127.0.0.1:4000/health")
-ready_url = os.environ.get("DEPLOY_READY_URL", "http://127.0.0.1:4000/ready")
+api_port = os.environ.get("DEPLOY_API_PORT", "4001")
+health_url = os.environ.get("DEPLOY_HEALTH_URL", f"http://127.0.0.1:{api_port}/health")
+ready_url = os.environ.get("DEPLOY_READY_URL", f"http://127.0.0.1:{api_port}/ready")
 
 if not password and not key_path:
     print(
@@ -56,6 +59,27 @@ def run(client: paramiko.SSHClient, command: str, label: str, *, timeout: int = 
     if status != 0:
         raise RuntimeError(f"{label} failed with exit code {status}")
     return out
+
+
+def run_with_retries(
+    client: paramiko.SSHClient,
+    command: str,
+    label: str,
+    *,
+    timeout: int = 60,
+    attempts: int = 10,
+    delay_seconds: int = 3,
+) -> str:
+    last_error = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return run(client, command, f"{label} (attempt {attempt}/{attempts})", timeout=timeout)
+        except RuntimeError as exc:
+            last_error = exc
+            if attempt == attempts:
+                break
+            time.sleep(delay_seconds)
+    raise last_error or RuntimeError(f"{label} failed")
 
 
 client = paramiko.SSHClient()
@@ -111,8 +135,8 @@ try:
         run(client, f"systemctl restart {service}", f"restart {service}", timeout=120)
         run(client, f"systemctl is-active {service}", f"check {service}", timeout=30)
 
-    run(client, f"curl -fsS {quote_single(health_url)}", "health check", timeout=30)
-    run(client, f"curl -fsS {quote_single(ready_url)}", "ready check", timeout=30)
+    run_with_retries(client, f"curl -fsS {quote_single(health_url)}", "health check", timeout=30)
+    run_with_retries(client, f"curl -fsS {quote_single(ready_url)}", "ready check", timeout=30)
     print("--- deploy complete ---")
 except Exception as exc:
     print(f"deploy failed: {exc}", file=sys.stderr)
