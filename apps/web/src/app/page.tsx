@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { SectionCard } from "@superava/ui";
@@ -21,47 +22,6 @@ import {
   getTemplates,
 } from "@/lib/server-api";
 
-function LogoIcon() {
-  return (
-    <svg
-      width="28"
-      height="28"
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className="shrink-0 text-white"
-      aria-hidden
-    >
-      <rect
-        x="2"
-        y="2"
-        width="20"
-        height="20"
-        rx="4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle
-        cx="12"
-        cy="10"
-        r="4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 20c2-3 5-4 7-4s5 1 7 4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 const CATEGORY_IMAGE_VERSION = 2;
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -138,9 +98,24 @@ export default async function Home(props: {
       <section className="rounded-[2.25rem] border border-white/10 bg-white/5 p-6 shadow-[0_20px_90px_rgba(15,23,42,0.45)] backdrop-blur sm:p-8 lg:p-10">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="flex items-center gap-2.5">
-              <LogoIcon />
-              <span className="text-xl font-semibold tracking-tight text-fuchsia-300">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo.png"
+                alt=""
+                width={56}
+                height={56}
+                className="shrink-0 rounded-xl"
+                priority
+              />
+              <span
+                className="text-2xl font-bold tracking-tight sm:text-3xl"
+                style={{
+                  background: "linear-gradient(135deg, #e879f9 0%, #c084fc 50%, #a855f7 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
                 superava
               </span>
             </div>
