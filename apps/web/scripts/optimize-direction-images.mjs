@@ -15,8 +15,7 @@ const MAPPING = [
   { src: "003.png", out: "direction-reference.webp" },
 ];
 
-const WIDTH = 800;
-const HEIGHT = 600;
+const MAX_SIZE = 800;
 
 await mkdir(OUT, { recursive: true });
 
@@ -25,9 +24,9 @@ for (const { src, out } of MAPPING) {
   const output = join(OUT, out);
   const img = sharp(input);
   const meta = await img.metadata();
-  console.log(`${src}: ${meta.width}x${meta.height} -> ${WIDTH}x${HEIGHT}`);
+  console.log(`${src}: ${meta.width}x${meta.height}`);
   await img
-    .resize(WIDTH, HEIGHT, { fit: "cover" })
+    .resize(MAX_SIZE, MAX_SIZE, { fit: "inside", withoutEnlargement: true })
     .webp({ quality: 82 })
     .toFile(output);
   const { size } = await stat(output);
