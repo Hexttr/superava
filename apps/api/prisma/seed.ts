@@ -12,41 +12,84 @@ const PROMPT_PARTS = [
     key: "base",
     label: "Основные правила идентичности",
     value:
-      "CRITICAL: The generated person MUST be the exact same person from the reference photos. Do not alter, reinterpret, or change the face. Maintain identical: eye shape and spacing, nose shape and size, lip shape, jawline contour, facial proportions, skin tone, and bone structure. The output must be this specific individual—not a similar-looking person. Copy the face from references with maximum fidelity. Prioritize identity preservation over any other instruction. Avoid: face drift, different person, beauty filters, distorted anatomy, stylization that changes likeness. Create exactly one highly realistic photo.",
+      "Generate exactly one photorealistic image. The subject must be the exact same person from the provided reference photos, with maximum identity fidelity. Preserve facial structure, proportions, skin tone, eye distance, nose shape, lip shape, jawline, and overall likeness. Do not beautify into a different person, do not stylize the face, and do not introduce face drift.",
     sortOrder: 0,
+  },
+  {
+    key: "identity_lock",
+    label: "Жесткая фиксация идентичности",
+    value:
+      "Identity lock: prioritize face consistency over styling. Keep the same age impression, facial proportions, ethnic features, and natural skin texture. Do not change gender presentation, do not invent new facial features, and do not substitute with a similar-looking model.",
+    sortOrder: 1,
+  },
+  {
+    key: "realism_guardrails",
+    label: "Правила фотореализма",
+    value:
+      "Realism guardrails: realistic photography only, natural anatomy, correct hands, natural eyes, believable teeth, consistent lighting, coherent perspective, intact jewelry and fabric details, no duplicated limbs, no warped accessories, no plastic skin, no AI artifacts.",
+    sortOrder: 2,
   },
   {
     key: "profile_meta",
     label: "Мета профиля",
-    value: "Reference photos cover {count} face angles. Profile completeness {percent}%.",
-    sortOrder: 1,
+    value:
+      "Reference photos cover {count} face angles. Profile completeness: {percent}%. Match the same face across all generated viewpoints.",
+    sortOrder: 3,
   },
   {
     key: "closed_mouth",
     label: "Закрытый рот",
     value:
       "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile, no open mouth in the generated image.",
-    sortOrder: 2,
+    sortOrder: 4,
+  },
+  {
+    key: "free_mode",
+    label: "Режим свободного промпта",
+    value:
+      "Free mode: follow the user's request faithfully, but turn it into a polished premium photo with believable lighting, strong composition, and a natural pose.",
+    sortOrder: 5,
+  },
+  {
+    key: "template_mode",
+    label: "Режим шаблона",
+    value:
+      "Template mode: preserve the core scene design of the selected template, but render it as a believable premium photograph with clean identity matching and elegant composition.",
+    sortOrder: 6,
+  },
+  {
+    key: "reference_mode",
+    label: "Режим референса",
+    value:
+      "Reference mode: recreate the scene logic from the reference image while replacing the person with the exact subject from the profile photos. Match composition, camera angle, mood, and styling cues, but do not copy the original person's face.",
+    sortOrder: 7,
+  },
+  {
+    key: "reference_scene_prefix",
+    label: "Префикс описания сцены по референсу",
+    value:
+      "Create a photorealistic image that matches this scene description as closely as possible. Preserve the exact subject identity from the profile references.",
+    sortOrder: 8,
   },
   {
     key: "short_expansion",
     label: "Расширение короткого промпта",
     value:
-      "First, mentally expand this minimal request into a rich cinematic scene: environment, lighting, composition, props, styling. Then generate. User request: ",
-    sortOrder: 3,
+      "First, internally expand this short request into a premium photography brief with environment, camera distance, lens feel, lighting direction, composition, styling, pose, mood, and color palette. Then generate the image. User request: ",
+    sortOrder: 9,
   },
   {
     key: "user_request_prefix",
     label: "Префикс запроса пользователя",
     value: "User request: ",
-    sortOrder: 4,
+    sortOrder: 10,
   },
   {
     key: "enhance_portrait",
     label: "Улучшение портрета",
     value:
       "Apply subtle portrait enhancement: bright, expressive eyes with natural sparkle and lively gaze; soft, even skin tone with gentle retouching, no visible wrinkles or under-eye bags; well-lit, airy scene without dark or gloomy tones; polished, magazine-quality finish with flattering lighting.",
-    sortOrder: 5,
+    sortOrder: 11,
   },
 ];
 

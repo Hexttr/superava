@@ -20,7 +20,10 @@ const browserApiKey = process.env.NEXT_PUBLIC_GEMINI_BROWSER_KEY?.trim() ?? "";
 const browserModel =
   process.env.NEXT_PUBLIC_GEMINI_BROWSER_MODEL?.trim() ?? "gemini-2.5-flash-image";
 const generationTransport = process.env.NEXT_PUBLIC_GEMINI_TRANSPORT?.trim() ?? "server";
-const browserTransportEnabled = generationTransport === "browser" && Boolean(browserApiKey);
+const browserTransportEnabled =
+  process.env.NODE_ENV !== "production" &&
+  generationTransport === "browser" &&
+  Boolean(browserApiKey);
 
 function formatRub(minor: number) {
   return new Intl.NumberFormat("ru-RU", {
@@ -42,24 +45,32 @@ export function GenerationComposer(props: {
   const [prompt, setPrompt] = useState("");
   const [referencePhoto, setReferencePhoto] = useState<File | null>(null);
   const [enhancePortrait, setEnhancePortrait] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; tone: "accent" | "success" | "warning" } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const isPromptOnly = props.mode === "prompt";
   const isReferenceOnly = props.mode === "reference";
+  const readyShots = props.profile.shots.filter((shot) => shot.status !== "missing").length;
+  const profileReady = props.profile.completionPercent >= 100;
+  const canRunReference = Boolean(referencePhoto);
+  const canRunPrompt = Boolean(prompt.trim());
+  const referencePreviewUrl = referencePhoto ? URL.createObjectURL(referencePhoto) : null;
 
   function submitFreePrompt() {
     const trimmed = prompt.trim();
     const hasReference = Boolean(referencePhoto);
 
     if (!isReferenceOnly && !hasReference && !trimmed) {
-      setMessage("Введите запрос.");
+      setMessage({
+        text: "Добавьте текстовое описание или прикрепите фото-референс.",
+        tone: "warning",
+      });
       return;
     }
 
     if ((!isPromptOnly && hasReference) || isReferenceOnly) {
       if (!referencePhoto) {
-        setMessage("Прикрепите фото.");
+        setMessage({ text: "Сначала выберите фото-референс.", tone: "warning" });
         return;
       }
       submitReferencePhoto();
@@ -85,10 +96,16 @@ export function GenerationComposer(props: {
           enhancePortrait,
         });
         setPrompt("");
-        setMessage(`Генерация запущена: ${result.jobId}`);
+        setMessage({
+          text: `Генерация запущена. Запрос ${result.jobId} появился в истории.`,
+          tone: "success",
+        });
         router.refresh();
       } catch (error) {
-        setMessage(normalizeGenerationLaunchError(error));
+        setMessage({
+          text: normalizeGenerationLaunchError(error),
+          tone: "warning",
+        });
       }
     });
   }
@@ -107,10 +124,16 @@ export function GenerationComposer(props: {
         });
         setReferencePhoto(null);
         setPrompt("");
-        setMessage(`Генерация по фото запущена: ${result.jobId}`);
+        setMessage({
+          text: `Генерация по фото запущена. Запрос ${result.jobId} уже в работе.`,
+          tone: "success",
+        });
         router.refresh();
       } catch (error) {
-        setMessage(normalizeGenerationLaunchError(error));
+        setMessage({
+          text: normalizeGenerationLaunchError(error),
+          tone: "warning",
+        });
       }
     });
   }
@@ -221,7 +244,7 @@ export function GenerationComposer(props: {
             createdAt: new Date().toISOString(),
             source: "browser",
           });
-          setMessage(errorMessage);
+          setMessage({ text: errorMessage, tone: "warning" });
           return;
         }
 
@@ -240,7 +263,7 @@ export function GenerationComposer(props: {
             createdAt: new Date().toISOString(),
             source: "browser",
           });
-          setMessage("Gemini не вернул картинку.");
+          setMessage({ text: "Gemini не вернул картинку.", tone: "warning" });
           return;
         }
 
@@ -258,7 +281,10 @@ export function GenerationComposer(props: {
           source: "browser",
         });
         setPrompt("");
-        setMessage("Генерация добавлена в мои генерации.");
+        setMessage({
+          text: "Локальная dev-генерация добавлена в историю результатов.",
+          tone: "success",
+        });
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Браузерная генерация не удалась.";
@@ -275,7 +301,7 @@ export function GenerationComposer(props: {
           createdAt: new Date().toISOString(),
           source: "browser",
         });
-        setMessage(errorMessage);
+        setMessage({ text: errorMessage, tone: "warning" });
       }
     });
   }
@@ -295,132 +321,270 @@ export function GenerationComposer(props: {
     setMessage(null);
     startTransition(async () => {
       try {
-        const result = await createGenerationRequest({
+        await createGenerationRequest({
           mode: "template",
           templateId: template.id,
           enhancePortrait,
         });
-        setMessage(`Шаблон запущен: ${result.jobId}`);
+        setMessage({
+          text: `Шаблон "${template.title}" отправлен в генерацию.`,
+          tone: "success",
+        });
         router.refresh();
       } catch (error) {
-        setMessage(normalizeGenerationLaunchError(error));
+        setMessage({
+          text: normalizeGenerationLaunchError(error),
+          tone: "warning",
+        });
       }
     });
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {message ? (
-        <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-4 py-3 text-sm text-fuchsia-100">
-          {message}
+        <div
+          className={`rounded-[1.5rem] border px-4 py-3 text-sm ${
+            message.tone === "success"
+              ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+              : message.tone === "warning"
+                ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                : "border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-100"
+          }`}
+        >
+          {message.text}
         </div>
       ) : null}
 
-      <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
-        <div>
-          <p className="text-base font-semibold text-white">
-            {isReferenceOnly ? "Загрузите кадр" : "Опишите кадр"}
-          </p>
-          <p className="mt-1 text-sm text-slate-400">
-            {isReferenceOnly
-              ? "На фото — 1 человек. Мы проанализируем сцену и вставим вас."
-              : "Лицо возьмем из профиля, сцену соберём по описанию."}
-          </p>
-        </div>
-        {!isReferenceOnly && (
-          <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.currentTarget.value)}
-            placeholder="Я на крыше Токио ночью, кинематографично, реалистично, дорогой свет..."
-            className="mt-4 min-h-36 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
-          />
-        )}
-        {(isReferenceOnly || !isPromptOnly) && (
-          <div className="mt-4">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
-              <span>{isReferenceOnly ? "Выберите фото" : "Или прикрепите фото"}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setReferencePhoto(e.target.files?.[0] ?? null)}
-                className="file:rounded-lg file:border-0 file:bg-fuchsia-500/20 file:px-3 file:py-1.5 file:text-fuchsia-300 file:transition file:hover:bg-fuchsia-500/30"
-              />
-            </label>
-            {referencePhoto && (
-              <div className="mt-2 flex items-center gap-3">
-                <img
-                  src={URL.createObjectURL(referencePhoto)}
-                  alt=""
-                  className="h-20 w-20 rounded-lg object-cover"
-                />
-                <span className="text-sm text-slate-400">{referencePhoto.name}</span>
-                <button
-                  type="button"
-                  onClick={() => setReferencePhoto(null)}
-                  className="text-sm text-rose-400 hover:text-rose-300"
-                >
-                  Убрать
-                </button>
-              </div>
-            )}
-            {!isReferenceOnly && (
-              <p className="mt-1 text-xs text-slate-500">
-                На фото должен быть 1 человек. Мы проанализируем сцену и вставим вас в неё.
+      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-2xl">
+              <p className="text-base font-semibold text-white">
+                {isReferenceOnly ? "Загрузите кадр-референс" : "Опишите идеальный кадр"}
               </p>
-            )}
+              <p className="mt-1 text-sm leading-6 text-slate-400">
+                {isReferenceOnly
+                  ? "Загрузите фото с одной сценой. Мы разберем композицию, свет и настроение, а затем соберем похожий кадр уже с вашим лицом."
+                  : "Лицо берем из собранного профиля, а сцену, настроение и стиль строим по вашему описанию или выбранному шаблону."}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill
+                label={profileReady ? "Профиль готов" : `${readyShots}/6 ракурсов`}
+                tone={profileReady ? "success" : "warning"}
+              />
+              {browserTransportEnabled ? <StatusPill label="dev browser mode" tone="neutral" /> : null}
+            </div>
           </div>
-        )}
-        {isReferenceOnly && (
-          <textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.currentTarget.value)}
-            placeholder="Дополните сцену своим промптом (необязательно)"
-            className="mt-4 min-h-20 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
-          />
-        )}
-        <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-fuchsia-400/20">
-          <input
-            type="checkbox"
-            checked={enhancePortrait}
-            onChange={(e) => setEnhancePortrait(e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/5 text-fuchsia-400 focus:ring-fuchsia-400/40"
-          />
-          <span className="text-sm font-medium text-slate-200">Улучшить портрет</span>
-        </label>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button
-            type="button"
-            onClick={submitFreePrompt}
-            disabled={isPending || (isReferenceOnly && !referencePhoto)}
-            className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            Сгенерировать
-          </button>
-          <Link
-            href="/generations"
-            className="text-sm font-medium text-fuchsia-300 transition hover:text-fuchsia-200"
-          >
-            Мои генерации
-          </Link>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <InfoCard
+              title="1. Лицо"
+              text="Собранный профиль помогает удерживать сходство, пропорции и посадку лица."
+            />
+            <InfoCard
+              title="2. Сцена"
+              text={
+                isReferenceOnly
+                  ? "Используем композицию и свет из референс-кадра."
+                  : "Чем понятнее вы опишете сцену, тем чище получится композиция."
+              }
+            />
+            <InfoCard
+              title="3. Финал"
+              text="Результат появится в истории генераций. Активные статусы обновляются автоматически."
+            />
+          </div>
+
+          {!isReferenceOnly && (
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.currentTarget.value)}
+              placeholder="Я на крыше Токио ночью, editorial fashion, мягкий неон, дорогой свет, реалистичная фотография..."
+              className="mt-4 min-h-40 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
+            />
+          )}
+
+          {(isReferenceOnly || !isPromptOnly) && (
+            <div className="mt-4 rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4">
+              <label className="flex cursor-pointer flex-col gap-2 text-sm text-slate-300">
+                <span className="font-medium text-white">
+                  {isReferenceOnly ? "Добавьте фото-референс" : "Или загрузите фото-референс"}
+                </span>
+                <span className="text-slate-400">
+                  На фото должен быть один человек и понятная сцена без сильных фильтров.
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setReferencePhoto(e.target.files?.[0] ?? null)}
+                  className="text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-fuchsia-500/20 file:px-4 file:py-2 file:font-medium file:text-fuchsia-200 file:transition file:hover:bg-fuchsia-500/30"
+                />
+              </label>
+              {referencePreviewUrl ? (
+                <div className="mt-4 flex items-center gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/45 p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={referencePreviewUrl}
+                    alt={referencePhoto?.name ?? "reference"}
+                    className="h-20 w-20 rounded-[1.2rem] object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">
+                      {referencePhoto?.name}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Этот кадр будет использован как визуальный ориентир сцены.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setReferencePhoto(null)}
+                    className="text-sm font-medium text-rose-300 transition hover:text-rose-200"
+                  >
+                    Убрать
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {isReferenceOnly && (
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.currentTarget.value)}
+              placeholder="Опционально: уточните одежду, атмосферу или детали сцены"
+              className="mt-4 min-h-24 w-full rounded-[1.75rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
+            />
+          )}
+
+          <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3 transition hover:border-fuchsia-400/20">
+            <input
+              type="checkbox"
+              checked={enhancePortrait}
+              onChange={(e) => setEnhancePortrait(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-white/5 text-fuchsia-400 focus:ring-fuchsia-400/40"
+            />
+            <span className="text-sm font-medium text-slate-200">
+              Улучшить портрет: мягче свет, чище кожа, чуть более polished подача
+            </span>
+          </label>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              onClick={submitFreePrompt}
+              disabled={isPending || (isReferenceOnly ? !canRunReference : false)}
+              className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isPending ? "Запускаем..." : "Запустить генерацию"}
+            </button>
+            <Link
+              href="/generations"
+              className="text-sm font-medium text-fuchsia-300 transition hover:text-fuchsia-200"
+            >
+              Открыть историю генераций
+            </Link>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-fuchsia-300">
+              Рекомендации
+            </p>
+            <div className="mt-3 space-y-3 text-sm leading-6 text-slate-300">
+              <p>Лучше всего работают сцены с понятным местом, светом, настроением и позой.</p>
+              <p>Если запрос короткий, укажите хотя бы локацию, стиль, время суток и ощущение кадра.</p>
+              <p>Фото-референс особенно полезен, когда нужно повторить композицию или настроение сцены.</p>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-slate-950/55 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-fuchsia-300">
+              Быстрый старт
+            </p>
+            <div className="mt-3 grid gap-3">
+              {!isReferenceOnly ? (
+                <QuickPromptButton
+                  label="Дорогой студийный портрет"
+                  onClick={() =>
+                    setPrompt(
+                      "Luxury editorial portrait, clean studio light, elegant styling, magazine-quality realism"
+                    )
+                  }
+                />
+              ) : null}
+              {!isReferenceOnly ? (
+                <QuickPromptButton
+                  label="Городской вечерний lifestyle"
+                  onClick={() =>
+                    setPrompt(
+                      "Evening city lifestyle photo, cinematic bokeh, expensive light, natural pose, realistic fashion photography"
+                    )
+                  }
+                />
+              ) : null}
+              {!isReferenceOnly ? (
+                <QuickPromptButton
+                  label="Нежный daylight portrait"
+                  onClick={() =>
+                    setPrompt(
+                      "Soft daylight portrait near a large window, airy atmosphere, natural skin, premium beauty editorial"
+                    )
+                  }
+                />
+              ) : null}
+              {isReferenceOnly ? (
+                <QuickPromptButton
+                  label="Сделать сцену чуть более дорогой"
+                  onClick={() => setPrompt("Keep the same composition, but make styling and light more premium.")}
+                />
+              ) : null}
+            </div>
+            {!isReferenceOnly && !canRunPrompt ? (
+              <p className="mt-3 text-xs text-slate-500">
+                Нажмите на заготовку, чтобы быстро попробовать качественный сценарий.
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
 
       {props.showTemplates !== false ? (
-        <div className="grid gap-3">
+        <div className="space-y-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-fuchsia-300">
+                Готовые сцены
+              </p>
+              <h3 className="mt-2 text-xl font-semibold text-white">
+                Запускайте шаблоны в один клик
+              </h3>
+            </div>
+            <Link href="/templates" className="text-sm font-medium text-fuchsia-300 hover:text-fuchsia-200">
+              Вся галерея
+            </Link>
+          </div>
+          <div className="grid gap-3">
           {props.templates.map((template) => (
             <div
               key={template.id}
-              className="rounded-3xl border border-white/10 bg-slate-950/55 p-4"
+              className="rounded-[1.8rem] border border-white/10 bg-slate-950/55 p-4"
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-base font-semibold text-white">{template.title}</p>
                   <p className="mt-1 text-sm text-slate-400">{template.subtitle}</p>
-                  <p className="mt-1 text-xs font-medium text-fuchsia-300">
+                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-fuchsia-300">
                     {formatRub(template.priceMinor)}
                   </p>
                 </div>
-                <StatusPill label={template.previewLabel} tone="accent" />
+                <div className="flex items-center gap-2">
+                  <StatusPill label={template.previewLabel} tone="accent" />
+                  <StatusPill label={template.group} tone="neutral" />
+                </div>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-300">{template.description}</p>
               <div className="mt-4">
@@ -435,9 +599,31 @@ export function GenerationComposer(props: {
               </div>
             </div>
           ))}
+          </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function InfoCard(props: { title: string; text: string }) {
+  return (
+    <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-sm font-semibold text-white">{props.title}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{props.text}</p>
+    </div>
+  );
+}
+
+function QuickPromptButton(props: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={props.onClick}
+      className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-slate-300 transition hover:border-fuchsia-400/25 hover:bg-fuchsia-500/[0.08] hover:text-white"
+    >
+      {props.label}
+    </button>
   );
 }
 
@@ -448,6 +634,14 @@ function normalizeGenerationLaunchError(error: unknown) {
 
   if (error.message === "insufficient_balance") {
     return "Недостаточно средств на балансе.";
+  }
+
+  if (error.message === "generation_request_failed") {
+    return "Сервис генерации сейчас недоступен. Попробуйте снова через пару минут.";
+  }
+
+  if (error.message === "upload_failed") {
+    return "Не удалось загрузить фото-референс. Попробуйте другой файл.";
   }
 
   return error.message;

@@ -36,6 +36,10 @@ pnpm --filter @superava/api db:generate
 pnpm build
 ```
 
+If you deploy over SSH with Paramiko, use `scripts/check-server.py` before rollout and
+`scripts/deploy-web.py` only after the remote repo is clean and already on `main`. The deploy
+script now expects a fast-forward-only update and will fail instead of force-resetting the server.
+
 Then start the services separately:
 
 ```bash

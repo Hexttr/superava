@@ -51,8 +51,12 @@ export default async function TemplatesPage({
           Галерея
         </p>
         <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
-          Выберите стиль.
+          Выберите готовую сцену.
         </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+          Шаблоны полезны, когда хочется быстро получить предсказуемый результат без долгой
+          формулировки промпта. Ниже можно сразу запустить понравившуюся сцену.
+        </p>
       </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-2">
@@ -65,7 +69,7 @@ export default async function TemplatesPage({
                 <p>{templateTextBySlug[template.slug]?.subtitle ?? template.subtitle}</p>
                 <p>{templateTextBySlug[template.slug]?.description ?? template.description}</p>
                 <div className="rounded-3xl border border-dashed border-white/15 bg-slate-950/50 p-5 text-center text-sm text-slate-400">
-                  Превью {template.title}
+                  Превью сцены скоро заменим реальными примерами этого шаблона
                 </div>
               </div>
             </SectionCard>
@@ -74,7 +78,7 @@ export default async function TemplatesPage({
       </section>
 
       <section className="mt-6">
-        <SectionCard eyebrow="Создать" title="Запуск">
+        <SectionCard eyebrow="Создать" title="Запустить шаблон или свою идею">
           <GenerationComposer
             templates={templates}
             profile={profile}

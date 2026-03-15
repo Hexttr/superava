@@ -11,7 +11,7 @@ import {
   listBrowserGenerations,
   type BrowserGenerationRecord,
 } from "@/lib/browser-generations";
-import { statusLabels } from "@/lib/ui-text";
+import { generationStatusDescriptions, statusLabels } from "@/lib/ui-text";
 
 const toneByStatus = {
   queued: "warning",
@@ -30,9 +30,7 @@ export function GenerationFeed(props: {
   const router = useRouter();
   const [browserGenerations, setBrowserGenerations] = useState<BrowserGenerationRecord[]>([]);
   const items = useMemo(() => {
-    const combined = [...browserGenerations, ...props.generations].filter(
-      (g) => g.status !== "failed"
-    );
+    const combined = [...browserGenerations, ...props.generations];
     const sorted = combined.sort(
       (left, right) =>
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
@@ -165,7 +163,9 @@ export function GenerationFeed(props: {
                       {generation.title}
                     </p>
                     <p className="mt-1 text-sm text-slate-400">
-                      {generation.subtitle}
+                      {generation.status === "completed"
+                        ? generation.subtitle
+                        : generationStatusDescriptions[generation.status]}
                     </p>
                   </div>
                   <StatusPill

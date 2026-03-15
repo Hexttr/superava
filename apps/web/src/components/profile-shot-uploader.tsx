@@ -7,7 +7,14 @@ import { useRouter } from "next/navigation";
 import type { PhotoProfile, ShotType } from "@superava/shared";
 import { StatusPill } from "@superava/ui";
 import { uploadProfileShot } from "@/lib/api";
-import { shotLabels, shotStatusLabels } from "@/lib/ui-text";
+import {
+  formatShotStep,
+  shotAngleLabels,
+  shotCaptureTips,
+  shotGuidanceText,
+  shotLabels,
+  shotStatusLabels,
+} from "@/lib/ui-text";
 
 export function ProfileShotUploader(props: { profile: PhotoProfile }) {
   const router = useRouter();
@@ -20,6 +27,17 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
   const nextMissingShot = useMemo(
     () => props.profile.shots.find((shot) => shot.status === "missing")?.type ?? null,
     [props.profile.shots]
+  );
+  const readyShots = useMemo(
+    () => props.profile.shots.filter((shot) => shot.status !== "missing").length,
+    [props.profile.shots]
+  );
+  const nextShotIndex = useMemo(
+    () =>
+      nextMissingShot
+        ? props.profile.shots.findIndex((shot) => shot.type === nextMissingShot)
+        : props.profile.shots.length - 1,
+    [nextMissingShot, props.profile.shots]
   );
 
   useEffect(() => {
@@ -74,9 +92,7 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
         setMessage(`Фото "${shotLabels[shotType]}" загружено.`);
         router.refresh();
       } catch (error) {
-        setMessage(
-          error instanceof Error ? error.message : "Не удалось загрузить фото."
-        );
+        setMessage(normalizeUploadError(error));
       } finally {
         setActiveShot(null);
       }
@@ -137,10 +153,74 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
   return (
     <div className="space-y-4">
       {message ? (
-        <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+        <div className="rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
           {message}
         </div>
       ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="max-w-xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+                Guided Flow
+              </p>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                Соберите стабильный профиль из шести ракурсов
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Чем аккуратнее и ровнее собран профиль, тем чаще генерация сохраняет ваше
+                лицо, выражение и пропорции без искажений.
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Готово</p>
+              <p className="mt-1 text-3xl font-semibold text-white">{readyShots}/6</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {props.profile.completionPercent}% профиля собрано
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {shotCaptureTips.map((tip) => (
+              <div
+                key={tip}
+                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-slate-300"
+              >
+                {tip}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-cyan-400/20 bg-cyan-400/8 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200">
+            Следующий ракурс
+          </p>
+          <h3 className="mt-2 text-xl font-semibold text-white">
+            {nextMissingShot ? shotLabels[nextMissingShot] : "Профиль собран"}
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            {nextMissingShot
+              ? shotGuidanceText[nextMissingShot]
+              : "Все шесть ракурсов уже загружены. Можно переходить к генерациям и запускать сцены."}
+          </p>
+          {nextMissingShot ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <StatusPill
+                label={formatShotStep(nextShotIndex, props.profile.shots.length)}
+                tone="accent"
+              />
+              <StatusPill label={shotAngleLabels[nextMissingShot]} tone="neutral" />
+            </div>
+          ) : (
+            <div className="mt-4">
+              <StatusPill label="Профиль готов" tone="success" />
+            </div>
+          )}
+        </div>
+      </div>
 
       {cameraShot ? (
         <div className="rounded-[2rem] border border-cyan-400/20 bg-slate-950/60 p-4">
@@ -196,11 +276,15 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
               key={shot.id}
               className={`rounded-[1.75rem] border p-3 ${
                 isCurrent
-                  ? "border-cyan-400/30 bg-cyan-400/8"
+                  ? "border-cyan-400/30 bg-cyan-400/8 shadow-[0_10px_40px_rgba(34,211,238,0.08)]"
                   : "border-white/10 bg-slate-950/55"
               }`}
             >
               <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">{shotLabels[shot.type]}</p>
+                  <p className="mt-1 text-xs text-slate-500">{shotAngleLabels[shot.type]}</p>
+                </div>
                 <StatusPill
                   label={
                     busy
@@ -221,7 +305,6 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
                           : "accent"
                   }
                 />
-                <p className="text-sm font-semibold text-white">{shotLabels[shot.type]}</p>
               </div>
 
               <div className="mt-3 overflow-hidden rounded-[1.5rem] border border-white/10">
@@ -236,6 +319,10 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
                   }`}
                 />
               </div>
+
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                {shotGuidanceText[shot.type]}
+              </p>
 
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -269,4 +356,20 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
       </div>
     </div>
   );
+}
+
+function normalizeUploadError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return "Не удалось загрузить фото.";
+  }
+
+  if (error.message === "upload_failed") {
+    return "Не удалось загрузить файл. Попробуйте другой снимок или повторите позже.";
+  }
+
+  if (error.message.includes("image")) {
+    return "Нужна фотография лица в хорошем качестве без сильных искажений.";
+  }
+
+  return error.message;
 }

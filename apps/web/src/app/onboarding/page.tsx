@@ -22,8 +22,12 @@ export default async function OnboardingPage() {
           Профиль лица
         </p>
         <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
-          Добавьте 6 ракурсов.
+          Добавьте 6 ракурсов без спешки.
         </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+          Этот этап нужен один раз. Когда профиль собран качественно, все дальнейшие генерации
+          выглядят стабильнее и заметно лучше удерживают ваше лицо.
+        </p>
       </section>
 
       <section className="mt-6">

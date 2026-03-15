@@ -120,14 +120,26 @@ export default async function Home(props: {
               </span>
             </div>
             <h1 className="mt-5 text-2xl font-semibold leading-tight tracking-tight text-white sm:text-3xl lg:text-4xl">
-              Загрузи свои фото и наслаждайся
+              Соберите персональный профиль лица и получайте
               <br />
-              супер аватарками
+              premium-фотокадры в один запуск
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              Собери профиль из шести ракурсов, выбери готовую идею или опиши свою сцену.
-              superava превратит это в фотоконтент, который выглядит цельно и персонально.
+              Загрузите шесть ракурсов, выберите готовую сцену или опишите собственную идею.
+              superava собирает кадры так, чтобы лицо выглядело узнаваемо, а результат ощущался
+              как полноценная фотосъёмка, а не случайная AI-генерация.
             </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300">
+                Профиль из 6 ракурсов
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300">
+                Текст, шаблоны и фото-референсы
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-300">
+                История и скачивание результатов
+              </span>
+            </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/onboarding"
@@ -145,6 +157,10 @@ export default async function Home(props: {
                 Готовые сцены
               </Link>
             </div>
+            <p className="mt-4 text-sm text-slate-500">
+              Рекомендуем начать с профиля лица: так генерации будут стабильнее уже с первого
+              запуска.
+            </p>
           </div>
           {user ? (
             <AccountBlock
@@ -173,7 +189,8 @@ export default async function Home(props: {
                 6 ракурсов для стабильной генерации
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-                Чем полнее профиль, тем аккуратнее сохраняется лицо в готовых кадрах.
+                Чем аккуратнее собран профиль, тем точнее сохраняются черты лица, пропорции,
+                выражение и посадка головы в готовых изображениях.
               </p>
             </div>
             <div className="shrink-0">
@@ -198,10 +215,11 @@ export default async function Home(props: {
               Выберите способ
             </p>
             <h2 className="mt-3 text-2xl font-semibold text-white sm:text-3xl">
-              И получите свой идеальный кадр
+              Выберите сценарий генерации
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
-              Готовы проявить фантазию?
+              Свой текст, готовый шаблон или любимый кадр-референс. Каждый путь подходит под
+              разный тип задачи и даёт разную степень контроля над результатом.
             </p>
           </div>
           <div className="mt-6">
@@ -221,7 +239,7 @@ export default async function Home(props: {
           <GenerationGallery
             generations={generations}
             maxItems={8}
-            emptyText="Здесь появятся ваши кадры. Выберите способ выше и запустите генерацию."
+            emptyText="Здесь будут появляться готовые кадры и активные генерации. Сначала выберите сценарий выше и отправьте первый запрос."
           />
           <div className="mt-5">
             <Link

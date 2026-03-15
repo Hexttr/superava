@@ -9,8 +9,9 @@ export default async function AdminPromptsPage() {
     <div>
       <h1 className="text-2xl font-semibold text-white">Промпты (конструктор)</h1>
       <p className="mt-2 text-slate-400">
-        Редактируйте части конструктора промптов. Порядок: base → profile_meta → closed_mouth →
-        scene_request → enhance_portrait.
+        Редактируйте части конструктора промптов для трех режимов генерации: свободный запрос,
+        шаблон и референс-фото. Базовые guardrails лучше менять осторожно, они сильнее всего
+        влияют на сходство лица и стабильность результата.
       </p>
       <div className="mt-6">
         <BillingConfigForm config={config} />

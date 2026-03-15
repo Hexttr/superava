@@ -151,7 +151,13 @@ export const promptConstructorConfigSchema = z.object({
 export type PromptConstructorConfig = z.infer<typeof promptConstructorConfigSchema>;
 
 export const DEFAULT_GENERATION_BASE_PROMPT =
-  "CRITICAL: The generated person MUST be the exact same person from the reference photos. Do not alter, reinterpret, or change the face. Maintain identical: eye shape and spacing, nose shape and size, lip shape, jawline contour, facial proportions, skin tone, and bone structure. The output must be this specific individual—not a similar-looking person. Copy the face from references with maximum fidelity. Prioritize identity preservation over any other instruction. Avoid: face drift, different person, beauty filters, distorted anatomy, stylization that changes likeness. Create exactly one highly realistic photo.";
+  "Generate exactly one photorealistic image. The subject must be the exact same person from the provided reference photos, with maximum identity fidelity. Preserve facial structure, proportions, skin tone, eye distance, nose shape, lip shape, jawline, and overall likeness. Do not beautify into a different person, do not stylize the face, and do not introduce face drift.";
+
+const IDENTITY_LOCK_PROMPT =
+  "Identity lock: prioritize face consistency over styling. Keep the same age impression, facial proportions, ethnic features, and natural skin texture. Do not change gender presentation, do not invent new facial features, and do not substitute with a similar-looking model.";
+
+const REALISM_GUARDRAILS_PROMPT =
+  "Realism guardrails: realistic photography only, natural anatomy, correct hands, natural eyes, believable teeth, consistent lighting, coherent perspective, intact jewelry and fabric details, no duplicated limbs, no warped accessories, no plastic skin, no AI artifacts.";
 
 export function normalizeGeminiErrorMessage(message?: string | null) {
   const normalized = message?.trim();
@@ -193,7 +199,16 @@ const CLOSED_MOUTH_PROMPT =
   "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile, no open mouth in the generated image.";
 
 const SHORT_PROMPT_EXPANSION_PREFIX =
-  "First, mentally expand this minimal request into a rich cinematic scene: imagine environment, lighting, composition, props, and styling. Then generate the image. User request: ";
+  "First, internally expand this short request into a premium photography brief with environment, camera distance, lens feel, lighting direction, composition, styling, pose, mood, and color palette. Then generate the image. User request: ";
+
+const FREE_MODE_PROMPT =
+  "Free mode: follow the user's request faithfully, but turn it into a polished premium photo with believable lighting, strong composition, and a natural pose.";
+
+const TEMPLATE_MODE_PROMPT =
+  "Template mode: preserve the core scene design of the selected template, but render it as a believable premium photograph with clean identity matching and elegant composition.";
+
+const REFERENCE_MODE_PROMPT =
+  "Reference mode: recreate the scene logic from the reference image while replacing the person with the exact subject from the profile photos. Match composition, camera angle, mood, and styling cues, but do not copy the original person's face.";
 
 function isShortUserPrompt(
   prompt: string,
@@ -214,28 +229,21 @@ export function buildGenerationPrompt(args: {
   promptConstructor?: PromptConstructorConfig;
 }) {
   const constructor = args.promptConstructor;
-  const partsMap = constructor
-    ? new Map(constructor.parts.map((p) => [p.key, p.value]))
-    : null;
+  const partsMap = buildPartsMap(constructor);
   const maxChars = constructor?.shortPromptMaxChars ?? 80;
   const maxWords = constructor?.shortPromptMaxWords ?? 6;
 
   const base =
     partsMap?.get("base") ?? args.config?.basePrompt ?? DEFAULT_GENERATION_BASE_PROMPT;
-
-  const count = args.profile.shots.filter((shot) => shot.status !== "missing").length;
-  const percent = args.profile.completionPercent;
-  const profileMetaTemplate = partsMap?.get("profile_meta") ?? `Reference photos cover ${count} face angles. Profile completeness: ${percent}%.`;
-  const profileMeta = profileMetaTemplate
-    .replace(/\{count\}/g, String(count))
-    .replace(/\{percent\}/g, String(percent));
-
-  const hasSmileShot = args.profile.shots.some(
-    (s) => s.type === "front_smile" && s.status !== "missing"
-  );
-  const closedMouthRule = !hasSmileShot
-    ? (partsMap?.get("closed_mouth") ?? CLOSED_MOUTH_PROMPT)
-    : undefined;
+  const identityLock = partsMap?.get("identity_lock") ?? IDENTITY_LOCK_PROMPT;
+  const realismGuardrails =
+    partsMap?.get("realism_guardrails") ?? REALISM_GUARDRAILS_PROMPT;
+  const profileMeta = buildProfileMeta(args.profile, partsMap);
+  const closedMouthRule = buildClosedMouthRule(args.profile, partsMap);
+  const modeInstruction =
+    args.input.mode === "template"
+      ? (partsMap?.get("template_mode") ?? TEMPLATE_MODE_PROMPT)
+      : (partsMap?.get("free_mode") ?? FREE_MODE_PROMPT);
 
   let sceneRequest: string | undefined;
   const userPrompt = args.input.prompt?.trim();
@@ -256,8 +264,11 @@ export function buildGenerationPrompt(args: {
 
   const promptParts = [
     base,
+    identityLock,
+    realismGuardrails,
     profileMeta,
     closedMouthRule,
+    modeInstruction,
     sceneRequest,
     enhancePortrait,
   ].filter(Boolean);
@@ -266,7 +277,7 @@ export function buildGenerationPrompt(args: {
 }
 
 const REFERENCE_SCENE_PREFIX =
-  "Create a photo that exactly matches this scene description. The subject's face must match the provided reference photos. ";
+  "Create a photorealistic image that matches this scene description as closely as possible. Preserve the exact subject identity from the profile references. ";
 
 export function buildReferenceModePrompt(args: {
   sceneDescription: string;
@@ -275,32 +286,22 @@ export function buildReferenceModePrompt(args: {
   enhancePortrait: boolean;
   promptConstructor?: PromptConstructorConfig;
 }) {
-  const partsMap = args.promptConstructor
-    ? new Map(args.promptConstructor.parts.map((p) => [p.key, p.value]))
-    : null;
+  const partsMap = buildPartsMap(args.promptConstructor);
 
   const base =
     partsMap?.get("base") ?? DEFAULT_GENERATION_BASE_PROMPT;
-
-  const count = args.profile.shots.filter((shot) => shot.status !== "missing").length;
-  const percent = args.profile.completionPercent;
-  const profileMetaTemplate =
-    partsMap?.get("profile_meta") ??
-    `Reference photos cover ${count} face angles. Profile completeness: ${percent}%.`;
-  const profileMeta = profileMetaTemplate
-    .replace(/\{count\}/g, String(count))
-    .replace(/\{percent\}/g, String(percent));
-
-  const hasSmileShot = args.profile.shots.some(
-    (s) => s.type === "front_smile" && s.status !== "missing"
-  );
-  const closedMouthRule = !hasSmileShot
-    ? (partsMap?.get("closed_mouth") ?? "The subject has closed mouth in all reference photos. Keep mouth closed, neutral lips, no smile.")
-    : undefined;
-
-  const scenePart = `${REFERENCE_SCENE_PREFIX}Scene: ${args.sceneDescription}.`;
+  const identityLock = partsMap?.get("identity_lock") ?? IDENTITY_LOCK_PROMPT;
+  const realismGuardrails =
+    partsMap?.get("realism_guardrails") ?? REALISM_GUARDRAILS_PROMPT;
+  const profileMeta = buildProfileMeta(args.profile, partsMap);
+  const closedMouthRule = buildClosedMouthRule(args.profile, partsMap);
+  const referenceModeInstruction =
+    partsMap?.get("reference_mode") ?? REFERENCE_MODE_PROMPT;
+  const referencePrefix =
+    partsMap?.get("reference_scene_prefix") ?? REFERENCE_SCENE_PREFIX;
+  const scenePart = `${referencePrefix}Scene description: ${args.sceneDescription}.`;
   const userCommentPart = args.userComment?.trim()
-    ? `Additional modification requested: ${args.userComment}.`
+    ? `Additional user refinement: ${args.userComment}.`
     : undefined;
 
   const enhancePortrait = args.enhancePortrait
@@ -309,14 +310,51 @@ export function buildReferenceModePrompt(args: {
 
   const promptParts = [
     base,
+    identityLock,
+    realismGuardrails,
     profileMeta,
     closedMouthRule,
+    referenceModeInstruction,
     scenePart,
     userCommentPart,
     enhancePortrait,
   ].filter(Boolean);
 
   return promptParts.join(" ");
+}
+
+function buildPartsMap(promptConstructor?: PromptConstructorConfig) {
+  return promptConstructor
+    ? new Map(promptConstructor.parts.map((p) => [p.key, p.value]))
+    : null;
+}
+
+function buildProfileMeta(
+  profile: PhotoProfile,
+  partsMap: Map<string, string> | null
+) {
+  const count = profile.shots.filter((shot) => shot.status !== "missing").length;
+  const percent = profile.completionPercent;
+  const profileMetaTemplate =
+    partsMap?.get("profile_meta") ??
+    `Reference photos cover {count} face angles. Profile completeness: {percent}%. Match the same face across all generated viewpoints.`;
+
+  return profileMetaTemplate
+    .replace(/\{count\}/g, String(count))
+    .replace(/\{percent\}/g, String(percent));
+}
+
+function buildClosedMouthRule(
+  profile: PhotoProfile,
+  partsMap: Map<string, string> | null
+) {
+  const hasSmileShot = profile.shots.some(
+    (shot) => shot.type === "front_smile" && shot.status !== "missing"
+  );
+
+  return !hasSmileShot
+    ? (partsMap?.get("closed_mouth") ?? CLOSED_MOUTH_PROMPT)
+    : undefined;
 }
 
 export const generationRecordSchema = z.object({

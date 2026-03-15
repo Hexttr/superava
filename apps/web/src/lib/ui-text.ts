@@ -27,12 +27,35 @@ export const shotAngleLabels: Record<ShotType, string> = {
   right_profile: "правый бок",
 };
 
+export const shotGuidanceText: Record<ShotType, string> = {
+  front_neutral: "Смотрите прямо в камеру, лицо ровно, подбородок без наклона.",
+  front_smile: "Тот же ракурс, но с легкой естественной улыбкой и расслабленным взглядом.",
+  left_45: "Повернитесь влево примерно на 45 градусов, оба глаза должны быть видны.",
+  right_45: "Повернитесь вправо примерно на 45 градусов, сохраните мягкий свет на лице.",
+  left_profile: "Полный левый профиль: нос и линия подбородка читаются четко на контрастном фоне.",
+  right_profile: "Полный правый профиль: держите голову ровно и не уводите взгляд вниз.",
+};
+
+export const shotCaptureTips = [
+  "Снимайте при мягком дневном или ровном комнатном свете без жёстких теней.",
+  "В кадре должен быть только один человек, без очков, масок и сильных фильтров.",
+  "Не меняйте прическу, макияж и свет между ракурсами, чтобы лицо сохранялось стабильнее.",
+] as const;
+
 export const statusLabels: Record<GenerationStatus, string> = {
   queued: "в очереди",
   processing: "генерация",
   finalizing: "сборка",
   completed: "готово",
   failed: "ошибка",
+};
+
+export const generationStatusDescriptions: Record<GenerationStatus, string> = {
+  queued: "Запрос принят. Скоро воркер начнет собирать сцену.",
+  processing: "Собираем композицию, свет и сходство лица по профилю.",
+  finalizing: "Кадр уже собран. Завершаем сохранение и подготовку превью.",
+  completed: "Результат готов и доступен для просмотра и скачивания.",
+  failed: "Что-то пошло не так. Можно скорректировать запрос и попробовать снова.",
 };
 
 export const templateTextBySlug: Record<string, { subtitle: string; description: string }> = {
@@ -95,3 +118,7 @@ export const shotStatusLabels = {
   approved: "готово",
   uploading: "загрузка",
 } as const;
+
+export function formatShotStep(index: number, total: number) {
+  return `Шаг ${index + 1} из ${total}`;
+}

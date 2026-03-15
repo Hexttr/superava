@@ -11,6 +11,7 @@ import {
   listBrowserGenerations,
   type BrowserGenerationRecord,
 } from "@/lib/browser-generations";
+import { generationStatusDescriptions, statusLabels } from "@/lib/ui-text";
 
 export function GenerationGallery(props: {
   generations: GenerationRecord[];
@@ -22,9 +23,7 @@ export function GenerationGallery(props: {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
 
   const items = useMemo(() => {
-    const combined = [...browserGenerations, ...props.generations].filter(
-      (g) => g.status !== "failed"
-    );
+    const combined = [...browserGenerations, ...props.generations];
     const sorted = combined.sort(
       (left, right) =>
         new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
@@ -109,7 +108,7 @@ export function GenerationGallery(props: {
           return (
             <div
               key={generation.id}
-              className="group relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 transition hover:border-fuchsia-400/30"
+              className="group relative overflow-hidden rounded-[1.4rem] border border-white/10 bg-slate-950/50 transition hover:border-fuchsia-400/30"
             >
               {imageSrc ? (
                 <button
@@ -132,10 +131,22 @@ export function GenerationGallery(props: {
                   />
                 </button>
               ) : (
-                <div className="flex aspect-square w-full items-center justify-center bg-white/5 text-xs uppercase tracking-widest text-slate-500">
-                  {generation.status === "failed" ? "Ошибка" : "Ждём"}
+                <div className="flex aspect-square w-full items-center justify-center bg-white/5 px-4 text-center text-xs uppercase tracking-widest text-slate-500">
+                  {generation.status === "failed" ? "Ошибка генерации" : "Идет обработка"}
                 </div>
               )}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950 to-transparent" />
+              <div className="absolute inset-x-3 bottom-3">
+                <p className="truncate text-sm font-semibold text-white">{generation.title}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-slate-300">
+                  {generation.status === "completed"
+                    ? generation.subtitle
+                    : generationStatusDescriptions[generation.status]}
+                </p>
+                <p className="mt-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                  {statusLabels[generation.status]}
+                </p>
+              </div>
             </div>
           );
         })}

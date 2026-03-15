@@ -51,6 +51,7 @@ export function AccountBlock(props: {
   const displayName = props.user.name ?? props.user.email ?? "Пользователь";
   const email = props.user.email ?? null;
   const isAdmin = props.user.role === "ADMIN";
+  const configuredProviders = props.linkedProviders.filter((provider) => provider.configured);
 
   function startLink(provider: SocialAuthProvider) {
     setMessage(null);
@@ -86,114 +87,128 @@ export function AccountBlock(props: {
   }
 
   return (
-    <div className="relative w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5">
-      {/* Header: large nickname + red cross top-right */}
+    <div className="relative w-full max-w-sm rounded-[1.75rem] border border-white/10 bg-slate-950/45 p-5 shadow-[0_20px_70px_rgba(15,23,42,0.22)]">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-2xl font-semibold text-white">{displayName}</p>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-fuchsia-300">
+            Аккаунт
+          </p>
+          <p className="mt-2 text-2xl font-semibold text-white">{displayName}</p>
+        </div>
         <LogoutButton iconOnly />
       </div>
 
       <div className="mt-5 space-y-4">
-          {/* Email + verification badge on one line */}
-          <div className="flex flex-wrap items-center gap-2">
-            {email ? (
-              <span className="text-sm text-slate-400" title={email}>
-                {maskEmail(email)}
-              </span>
-            ) : null}
-            <span
-              className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                props.user.emailVerified
-                  ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
-                  : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
-              }`}
-            >
-              {props.user.emailVerified ? "Email подтверждён" : "Email не подтверждён"}
+        <div className="flex flex-wrap items-center gap-2">
+          {email ? (
+            <span className="text-sm text-slate-400" title={email}>
+              {maskEmail(email)}
             </span>
-            {isAdmin ? (
-              <Link
-                href="/admin"
-                className="inline-flex items-center rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/15"
-              >
-                Админка
-              </Link>
-            ) : null}
-          </div>
+          ) : null}
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+              props.user.emailVerified
+                ? "border border-cyan-400/25 bg-cyan-400/10 text-cyan-200"
+                : "border border-amber-400/25 bg-amber-400/10 text-amber-200"
+            }`}
+          >
+            {props.user.emailVerified ? "Email подтверждён" : "Email не подтверждён"}
+          </span>
+          {isAdmin ? (
+            <Link
+              href="/admin"
+              className="inline-flex items-center rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-400/15"
+            >
+              Админка
+            </Link>
+          ) : null}
+        </div>
 
-          {/* Balance details */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Баланс</p>
-            <p className="mt-2 text-2xl font-semibold text-white">
-              {formatRub(props.billingAvailableMinor)}
-            </p>
-            <p className="mt-1 text-xs text-slate-400">
-              {props.billingEnabled
-                ? `Текст: ${props.textPrice} • Фото: ${props.photoPrice}`
-                : props.billingNote}
-            </p>
-          </div>
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Баланс</p>
+          <p className="mt-2 text-2xl font-semibold text-white">
+            {formatRub(props.billingAvailableMinor)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">
+            {props.billingEnabled
+              ? `Текст: ${props.textPrice} • Фото: ${props.photoPrice}`
+              : props.billingNote}
+          </p>
+        </div>
 
-          {!props.user.emailVerified ? <ResendVerificationButton /> : null}
+        {!props.user.emailVerified ? <ResendVerificationButton /> : null}
 
-          {/* Social icons row */}
-          <div>
-            {message ? (
-              <div className="mb-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
-                {message}
-              </div>
-            ) : null}
-            <div className="flex items-center gap-4">
-              {(socialProviderOrder as LoginProvider[]).map((provider) => {
-                const item =
-                  props.linkedProviders.find((c) => c.provider === provider) ?? null;
-                const configured = item?.configured ?? false;
-                const connected = item?.connected ?? false;
-                const mainEmail = props.user.email ?? "";
-                const providerEmail = item?.providerEmail ?? "";
-                const showProviderEmail =
-                  connected &&
-                  providerEmail &&
-                  providerEmail.toLowerCase() !== mainEmail.toLowerCase();
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p className="text-sm font-semibold text-white">Безопасность входа</p>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Сейчас основной вход работает через email и пароль. Подключение соцсетей появится
+            после финальной стабилизации внешнего контура.
+          </p>
+          {configuredProviders.length > 0 ? (
+            <div className="mt-4">
+              {message ? (
+                <div className="mb-3 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+                  {message}
+                </div>
+              ) : null}
+              <div className="flex items-center gap-4">
+                {(socialProviderOrder as LoginProvider[]).map((provider) => {
+                  const item =
+                    props.linkedProviders.find((c) => c.provider === provider) ?? null;
+                  const configured = item?.configured ?? false;
+                  const connected = item?.connected ?? false;
+                  const mainEmail = props.user.email ?? "";
+                  const providerEmail = item?.providerEmail ?? "";
+                  const showProviderEmail =
+                    connected &&
+                    providerEmail &&
+                    providerEmail.toLowerCase() !== mainEmail.toLowerCase();
 
-                return (
-                  <div
-                    key={provider}
-                    className="flex flex-col items-center gap-1"
-                    title={
-                      connected
-                        ? showProviderEmail
-                          ? providerEmail
-                          : `${socialProviderLabel(provider)} подключен`
-                        : configured
-                          ? `Подключить ${socialProviderLabel(provider)}`
-                          : `${socialProviderLabel(provider)} не настроен`
-                    }
-                  >
-                    <button
-                      type="button"
-                      disabled={isPending || (!configured && !connected)}
-                      onClick={() => (connected ? unlink(provider) : startLink(provider))}
-                      className="relative flex h-12 w-12 items-center justify-center rounded-full transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  return (
+                    <div
+                      key={provider}
+                      className="flex flex-col items-center gap-1"
+                      title={
+                        connected
+                          ? showProviderEmail
+                            ? providerEmail
+                            : `${socialProviderLabel(provider)} подключен`
+                          : configured
+                            ? `Подключить ${socialProviderLabel(provider)}`
+                            : `${socialProviderLabel(provider)} не настроен`
+                      }
                     >
-                      <SocialProviderIcon
-                        provider={provider}
-                        className="h-10 w-10"
-                        faded={!connected && configured}
-                      />
-                      {connected ? (
-                        <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-500 text-[10px] text-white">
-                          ✓
-                        </span>
-                      ) : null}
-                    </button>
-                    <span className="text-xs text-slate-400">
-                      {connected ? "Подключен" : configured ? "Подключить" : "—"}
-                    </span>
-                  </div>
-                );
-              })}
+                      <button
+                        type="button"
+                        disabled={isPending || (!configured && !connected)}
+                        onClick={() => (connected ? unlink(provider) : startLink(provider))}
+                        className="relative flex h-12 w-12 items-center justify-center rounded-full transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <SocialProviderIcon
+                          provider={provider}
+                          className="h-10 w-10"
+                          faded={!connected && configured}
+                        />
+                        {connected ? (
+                          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-cyan-500 text-[10px] text-white">
+                            ✓
+                          </span>
+                        ) : null}
+                      </button>
+                      <span className="text-xs text-slate-400">
+                        {connected ? "Подключен" : configured ? "Подключить" : "—"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          ) : (
+            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-slate-500">
+              OAuth пока отключен
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

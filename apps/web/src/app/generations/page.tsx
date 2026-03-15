@@ -21,8 +21,12 @@ export default async function GenerationsPage() {
           Мои генерации
         </p>
         <h1 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">
-          Все ваши результаты.
+          Все ваши результаты в одном месте.
         </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-base">
+          Здесь видно, какие запросы еще в очереди, какие сцены уже собираются и какие кадры
+          полностью готовы для просмотра.
+        </p>
       </section>
 
       <section className="mt-6">

@@ -35,6 +35,11 @@ const proxyUrl =
   process.env.ALL_PROXY ??
   undefined;
 const proxyDispatcher = proxyUrl ? new ProxyAgent(proxyUrl) : undefined;
+const geminiRequestTimeoutMs = Math.max(
+  10_000,
+  Number(process.env.GEMINI_REQUEST_TIMEOUT_MS ?? "90000")
+);
+const geminiRetryCount = Math.max(0, Number(process.env.GEMINI_RETRY_COUNT ?? "2"));
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is required");
@@ -279,50 +284,98 @@ const SCENE_ANALYSIS_PROMPT = `Analyze this photo in extreme detail for a photog
 - Person: pose, body position, clothing (fabric, color, style), accessories
 - Environment: location, background elements, props, textures
 - Mood and atmosphere
-Output a single detailed paragraph in English. Describe the scene as if briefing a photographer to shoot an identical frame. Do not describe the person's face in detail—focus on the scene, pose, clothing, and setting.`;
+Output a single detailed paragraph in English. Describe the scene as if briefing a photographer to shoot an identical premium editorial frame. Do not describe the person's face in detail. Focus on scene, pose, wardrobe, lens feel, lighting logic, camera height, and composition.`;
+
+async function requestGemini(args: { model: string; body: unknown }) {
+  const apiKey = ensureGeminiApiKey();
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= geminiRetryCount; attempt += 1) {
+    try {
+      const response = await undiciFetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${args.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          dispatcher: proxyDispatcher,
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(args.body),
+          signal: AbortSignal.timeout(geminiRequestTimeoutMs),
+        }
+      );
+
+      const rawText = await response.text();
+      const parsed = rawText ? tryParseJson(rawText) : null;
+      if (!response.ok) {
+        const errorMessage =
+          parsed &&
+          typeof parsed === "object" &&
+          "error" in parsed &&
+          parsed.error &&
+          typeof parsed.error === "object" &&
+          "message" in parsed.error &&
+          typeof parsed.error.message === "string"
+            ? parsed.error.message
+            : `gemini_request_failed_${response.status}`;
+
+        if (shouldRetryGemini(response.status, errorMessage) && attempt < geminiRetryCount) {
+          await sleep(1200 * (attempt + 1));
+          continue;
+        }
+
+        throw new Error(errorMessage);
+      }
+
+      if (!parsed || typeof parsed !== "object") {
+        throw new Error("gemini_invalid_response");
+      }
+
+      return parsed;
+    } catch (error) {
+      const normalized = error instanceof Error ? error : new Error("gemini_request_failed");
+      lastError = normalized;
+
+      if (
+        attempt < geminiRetryCount &&
+        shouldRetryGemini(undefined, normalized.message)
+      ) {
+        await sleep(1200 * (attempt + 1));
+        continue;
+      }
+
+      throw normalized;
+    }
+  }
+
+  throw lastError ?? new Error("gemini_request_failed");
+}
 
 async function analyzeSceneFromImage(args: {
   imageBuffer: Buffer;
   model: string;
 }): Promise<string> {
-  const apiKey = ensureGeminiApiKey();
   const imageBase64 = args.imageBuffer.toString("base64");
-  const response = await undiciFetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${args.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      dispatcher: proxyDispatcher,
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: SCENE_ANALYSIS_PROMPT },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: imageBase64,
-                },
+  const parsed = await requestGemini({
+    model: args.model,
+    body: {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: SCENE_ANALYSIS_PROMPT },
+            {
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: imageBase64,
               },
-            ],
-          },
-        ],
-        generationConfig: {
-          responseModalities: ["TEXT"],
+            },
+          ],
         },
-      }),
-    }
-  );
-  const rawText = await response.text();
-  const parsed = rawText ? tryParseJson(rawText) : null;
-
-  if (!response.ok) {
-    const err = parsed && typeof parsed === "object" && "error" in parsed
-      ? (parsed as { error?: { message?: string } }).error?.message
-      : undefined;
-    throw new Error(err ?? `scene_analysis_failed_${response.status}`);
-  }
+      ],
+      generationConfig: {
+        responseModalities: ["TEXT"],
+      },
+    },
+  });
 
   const candidates = parsed && typeof parsed === "object" && "candidates" in parsed
     ? (parsed as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }).candidates
@@ -356,50 +409,21 @@ async function renderGenerationImage(args: {
   prompt: string;
   shots: Array<{ storageKey: string | null; shotType?: string }>;
 }) {
-  const apiKey = ensureGeminiApiKey();
   const referenceParts = await buildReferenceParts(args.shots);
-  const response = await undiciFetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${args.model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      dispatcher: proxyDispatcher,
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: args.prompt }, ...referenceParts],
-          },
-        ],
-        generationConfig: {
-          responseModalities: ["TEXT", "IMAGE"],
+  const parsed = await requestGemini({
+    model: args.model,
+    body: {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: args.prompt }, ...referenceParts],
         },
-      }),
-    }
-  );
-  const rawText = await response.text();
-  const parsed = rawText ? tryParseJson(rawText) : null;
-
-  if (!response.ok) {
-    const errorMessage =
-      parsed &&
-      typeof parsed === "object" &&
-      "error" in parsed &&
-      parsed.error &&
-      typeof parsed.error === "object" &&
-      "message" in parsed.error &&
-      typeof parsed.error.message === "string"
-        ? parsed.error.message
-        : `gemini_request_failed_${response.status}`;
-
-    throw new Error(errorMessage);
-  }
-
-  if (!parsed || typeof parsed !== "object") {
-    throw new Error("gemini_invalid_response");
-  }
+      ],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+      },
+    },
+  });
 
   const generated = extractGeneratedImage(parsed);
   const outputBuffer = Buffer.from(generated.data, "base64");
@@ -420,6 +444,27 @@ function tryParseJson(value: string) {
   } catch {
     return null;
   }
+}
+
+function shouldRetryGemini(status?: number, message?: string | null) {
+  const normalized = message?.toLowerCase() ?? "";
+
+  if (typeof status === "number" && [408, 429, 500, 502, 503, 504].includes(status)) {
+    return true;
+  }
+
+  return (
+    normalized.includes("timeout") ||
+    normalized.includes("deadline") ||
+    normalized.includes("resource has been exhausted") ||
+    normalized.includes("resource_exhausted") ||
+    normalized.includes("temporarily unavailable") ||
+    normalized.includes("try again")
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function runReferenceJob(

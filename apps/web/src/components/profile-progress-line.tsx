@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { PhotoProfile } from "@superava/shared";
+import { shotLabels, shotShortLabels, shotStatusLabels } from "@/lib/ui-text";
 
 export function ProfileProgressLine(props: { profile: PhotoProfile }) {
   function getShotPreviewSrc(shot: PhotoProfile["shots"][number]) {
@@ -29,7 +30,7 @@ export function ProfileProgressLine(props: { profile: PhotoProfile }) {
             >
               <Image
                 src={getShotPreviewSrc(shot)}
-                alt=""
+                alt={shotLabels[shot.type]}
                 width={160}
                 height={160}
                 unoptimized
@@ -40,7 +41,7 @@ export function ProfileProgressLine(props: { profile: PhotoProfile }) {
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2">
                 <span className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/80">
-                  {shot.type.replaceAll("_", " ")}
+                  {shotShortLabels[shot.type]}
                 </span>
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
@@ -48,6 +49,16 @@ export function ProfileProgressLine(props: { profile: PhotoProfile }) {
                   }`}
                 />
               </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white">{shotLabels[shot.type]}</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                {shot.status === "approved"
+                  ? shotStatusLabels.approved
+                  : shot.status === "uploaded"
+                    ? shotStatusLabels.uploaded
+                    : shotStatusLabels.missing}
+              </p>
             </div>
           </div>
         );
