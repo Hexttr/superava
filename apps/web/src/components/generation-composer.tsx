@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -40,39 +40,42 @@ export function GenerationComposer(props: {
   promptConstructor?: PromptConstructorConfig;
   showTemplates?: boolean;
   mode?: "prompt" | "reference" | "full";
+  onBack?: () => void;
 }) {
   const router = useRouter();
+  const referenceInputRef = useRef<HTMLInputElement | null>(null);
   const [prompt, setPrompt] = useState("");
   const [referencePhoto, setReferencePhoto] = useState<File | null>(null);
   const [enhancePortrait, setEnhancePortrait] = useState(false);
   const [message, setMessage] = useState<{ text: string; tone: "accent" | "success" | "warning" } | null>(null);
+  const [showEnhanceInfo, setShowEnhanceInfo] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const isPromptOnly = props.mode === "prompt";
   const isReferenceOnly = props.mode === "reference";
+  const isCompactMode = props.showTemplates === false && (isPromptOnly || isReferenceOnly);
   const readyShots = props.profile.shots.filter((shot) => shot.status !== "missing").length;
   const profileReady = props.profile.completionPercent >= 100;
   const canRunReference = Boolean(referencePhoto);
   const canRunPrompt = Boolean(prompt.trim());
+  const canSubmitCompact = isReferenceOnly ? Boolean(prompt.trim() || referencePhoto) : canRunPrompt;
   const referencePreviewUrl = referencePhoto ? URL.createObjectURL(referencePhoto) : null;
 
   function submitFreePrompt() {
     const trimmed = prompt.trim();
     const hasReference = Boolean(referencePhoto);
 
-    if (!isReferenceOnly && !hasReference && !trimmed) {
+    if (!trimmed && !hasReference) {
       setMessage({
-        text: "Добавьте текстовое описание или прикрепите фото-референс.",
+        text: isReferenceOnly
+          ? "Добавьте описание сцены или приложите фото."
+          : "Опишите сцену словами.",
         tone: "warning",
       });
       return;
     }
 
-    if ((!isPromptOnly && hasReference) || isReferenceOnly) {
-      if (!referencePhoto) {
-        setMessage({ text: "Сначала выберите фото-референс.", tone: "warning" });
-        return;
-      }
+    if ((!isPromptOnly && hasReference) || (isReferenceOnly && hasReference)) {
       submitReferencePhoto();
       return;
     }
@@ -338,6 +341,160 @@ export function GenerationComposer(props: {
         });
       }
     });
+  }
+
+  if (isCompactMode) {
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Опишите идеальный кадр</p>
+            <p className="mt-1 text-sm text-slate-400">
+              {isReferenceOnly
+                ? "Можно добавить фото, если хотите задать композицию или настроение."
+                : "Опишите сцену кратко и ясно: локация, свет, стиль, настроение."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => props.onBack?.()}
+            className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/8"
+          >
+            Назад
+          </button>
+        </div>
+
+        {message ? (
+          <div
+            className={`rounded-[1.5rem] border px-4 py-3 text-sm ${
+              message.tone === "success"
+                ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                : message.tone === "warning"
+                  ? "border-amber-400/20 bg-amber-400/10 text-amber-100"
+                  : "border-fuchsia-400/20 bg-fuchsia-400/10 text-fuchsia-100"
+            }`}
+          >
+            {message.text}
+          </div>
+        ) : null}
+
+        <div className="rounded-[1.9rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.78)_0%,rgba(9,9,15,0.92)_100%)] p-4 sm:p-5">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
+                <button
+                  type="button"
+                  onClick={() => setEnhancePortrait(false)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    !enhancePortrait
+                      ? "bg-white text-slate-950 shadow-[0_8px_30px_rgba(255,255,255,0.15)]"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  Реальный вид
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnhancePortrait(true)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    enhancePortrait
+                      ? "bg-fuchsia-500 text-white shadow-[0_8px_30px_rgba(217,70,239,0.25)]"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  Улучшенный вид
+                </button>
+              </div>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowEnhanceInfo((value) => !value)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/15 text-slate-300 transition hover:bg-white/8 hover:text-white"
+                  aria-label="Что означает переключатель вида"
+                >
+                  <QuestionIcon />
+                </button>
+                {showEnhanceInfo ? (
+                  <div className="absolute right-0 top-11 z-10 w-72 rounded-[1.1rem] border border-white/10 bg-slate-950/95 p-3 text-sm leading-6 text-slate-300 shadow-[0_18px_60px_rgba(2,6,23,0.4)]">
+                    Реальный вид ближе к естественной фотографии. Улучшенный вид делает свет, кожу
+                    и подачу чуть более polished.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.currentTarget.value)}
+              placeholder={
+                isReferenceOnly
+                  ? "Например: я в современном кафе с мягким вечерним светом, fashion portrait, спокойный взгляд..."
+                  : "Например: я на крыше Токио ночью, cinematic editorial, неон, дорогой свет..."
+              }
+              className="min-h-36 w-full rounded-[1.6rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/35"
+            />
+
+            {isReferenceOnly ? (
+              <div className="space-y-3">
+                <input
+                  ref={referenceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => setReferencePhoto(event.currentTarget.files?.[0] ?? null)}
+                />
+                <button
+                  type="button"
+                  onClick={() => referenceInputRef.current?.click()}
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+                >
+                  {referencePhoto ? "Заменить файл" : "Приложить файл"}
+                </button>
+                {referencePhoto && referencePreviewUrl ? (
+                  <div className="flex items-center gap-3 rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={referencePreviewUrl}
+                      alt={referencePhoto.name}
+                      className="h-14 w-14 rounded-[1rem] object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-white">{referencePhoto.name}</p>
+                      <p className="mt-1 text-xs text-slate-400">Файл поможет задать сцену и композицию.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReferencePhoto(null)}
+                      className="text-sm font-medium text-rose-300 transition hover:text-rose-200"
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={submitFreePrompt}
+                disabled={isPending || !canSubmitCompact}
+                className="inline-flex items-center justify-center rounded-full bg-fuchsia-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isPending ? "Запускаем..." : "Запустить генерацию"}
+              </button>
+              <Link
+                href="/generations"
+                className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+              >
+                История генераций
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -624,6 +781,22 @@ function QuickPromptButton(props: { label: string; onClick: () => void }) {
     >
       {props.label}
     </button>
+  );
+}
+
+function QuestionIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true">
+      <path
+        d="M7.9 7.75a2.16 2.16 0 1 1 3.48 1.72c-.8.62-1.38 1.06-1.38 2.03"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="14.2" r="1" fill="currentColor" />
+      <circle cx="10" cy="10" r="8.15" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
 
