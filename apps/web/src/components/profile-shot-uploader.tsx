@@ -6,15 +6,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import type { PhotoProfile, ShotType } from "@superava/shared";
-import { StatusPill } from "@superava/ui";
 import { uploadProfileShot } from "@/lib/api";
-import {
-  shotAngleLabels,
-  shotCaptureTips,
-  shotGuidanceText,
-  shotLabels,
-  shotStatusLabels,
-} from "@/lib/ui-text";
+import { shotLabels } from "@/lib/ui-text";
 
 export function ProfileShotUploader(props: {
   profile: PhotoProfile;
@@ -91,8 +84,8 @@ export function ProfileShotUploader(props: {
 
       setCameraShot(shotType);
       setStream(mediaStream);
-    } catch {
-      setMessage("Не удалось открыть камеру.");
+    } catch (error) {
+      setMessage(normalizeCameraError(error));
     }
   }
 
@@ -111,7 +104,6 @@ export function ProfileShotUploader(props: {
     startTransition(async () => {
       try {
         await uploadProfileShot(shotType, file);
-        setMessage(`Фото "${shotLabels[shotType]}" загружено.`);
         router.refresh();
         onClose();
       } catch (error) {
@@ -181,7 +173,7 @@ export function ProfileShotUploader(props: {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/82 p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-slate-950/82 p-3 sm:items-center sm:p-4"
       onClick={() => {
         if (!isPending) {
           onClose();
@@ -192,147 +184,87 @@ export function ProfileShotUploader(props: {
       aria-label={`Загрузка ракурса ${shotLabels[selectedShot]}`}
     >
       <div
-        className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#171126] p-5 shadow-[0_30px_120px_rgba(15,23,42,0.5)] sm:p-6"
+        className="relative flex max-h-[calc(100vh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#171126] shadow-[0_30px_120px_rgba(15,23,42,0.5)] sm:max-h-[calc(100vh-2rem)] sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="max-w-2xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">
               Ракурс профиля
             </p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">
+            <h3 className="mt-1 truncate text-lg font-semibold text-white sm:text-xl">
               {shotLabels[selectedShot]}
             </h3>
-            <p className="mt-2 text-sm leading-6 text-slate-400">
-              {shotGuidanceText[selectedShot]}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <StatusPill label={shotAngleLabels[selectedShot]} tone="neutral" />
-              <StatusPill
-                label={
-                  selectedShotRecord.status === "approved"
-                    ? shotStatusLabels.approved
-                    : selectedShotRecord.status === "uploaded"
-                      ? shotStatusLabels.uploaded
-                      : shotStatusLabels.missing
-                }
-                tone={
-                  selectedShotRecord.status === "approved"
-                    ? "success"
-                    : selectedShotRecord.status === "uploaded"
-                      ? "accent"
-                      : "warning"
-                }
-              />
-            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/8 disabled:opacity-60"
+            className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/8 disabled:opacity-60"
           >
             Закрыть
           </button>
         </div>
 
-        {message ? (
-          <div className="mt-4 rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
-            {message}
-          </div>
-        ) : null}
-
-        <div className="mt-5 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="space-y-4">
-            <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-900/60">
-              <Image
-                src={getShotPreviewSrc(selectedShotRecord)}
-                alt={shotLabels[selectedShot]}
-                width={480}
-                height={480}
-                unoptimized
-                className={`aspect-square w-full object-cover ${
-                  selectedShotRecord.status === "missing" ? "opacity-60" : "opacity-100"
-                }`}
-              />
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+          {message ? (
+            <div className="mb-4 rounded-[1.2rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm leading-6 text-cyan-100">
+              {message}
             </div>
-
-            <div className="grid gap-3">
-              {shotCaptureTips.map((tip) => (
-                <div
-                  key={tip}
-                  className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-slate-300"
-                >
-                  {tip}
-                </div>
-              ))}
-            </div>
-          </div>
+          ) : null}
 
           <div className="space-y-4">
-            {cameraShot ? (
-              <div className="rounded-[1.75rem] border border-cyan-400/20 bg-slate-950/60 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Камера</p>
-                    <p className="text-sm text-slate-400">{shotLabels[cameraShot]}</p>
-                  </div>
-                  <Image
-                    src={`/api/shot-reference/${cameraShot}?size=80`}
-                    alt=""
-                    width={80}
-                    height={80}
-                    unoptimized
-                    className="h-16 w-16 rounded-2xl border border-white/10 object-cover"
-                  />
-                </div>
-
-                <div className="relative mt-4 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black">
+            <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-900/60">
+              {cameraShot ? (
+                <div className="relative bg-black">
                   <video ref={videoRef} playsInline muted className="aspect-square w-full object-cover" />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="h-[72%] w-[62%] rounded-[40%] border-2 border-white/60 shadow-[0_0_0_9999px_rgba(2,6,23,0.28)]" />
                   </div>
                 </div>
+              ) : (
+                <Image
+                  src={getShotPreviewSrc(selectedShotRecord)}
+                  alt={shotLabels[selectedShot]}
+                  width={480}
+                  height={480}
+                  unoptimized
+                  className={`aspect-square w-full object-cover ${
+                    selectedShotRecord.status === "missing" ? "opacity-60" : "opacity-100"
+                  }`}
+                />
+              )}
+            </div>
 
-                <div className="mt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={captureCurrentShot}
-                    disabled={isPending}
-                    className="inline-flex flex-1 items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
-                  >
-                    Снять
-                  </button>
-                  <button
-                    type="button"
-                    onClick={stopCamera}
-                    className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
-                  >
-                    Назад
-                  </button>
-                </div>
+            {cameraShot ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={captureCurrentShot}
+                  disabled={isPending}
+                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+                >
+                  Снять
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+                >
+                  Назад
+                </button>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className="grid gap-3">
                 <button
                   type="button"
                   onClick={() => void openCamera(selectedShot)}
                   disabled={busy}
-                  className="rounded-[1.75rem] border border-cyan-400/20 bg-cyan-400/10 p-5 text-left transition hover:border-cyan-300/40 hover:bg-cyan-400/14 disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
                 >
-                  <p className="text-base font-semibold text-white">Камера</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Откройте фронтальную камеру, выровняйте лицо по форме и сделайте снимок сразу
-                    в этом окне.
-                  </p>
+                  Камера
                 </button>
-
-                <label className="cursor-pointer rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.05]">
-                  <p className="text-base font-semibold text-white">Файл</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Выберите готовое фото из галереи или загрузите снимок, который уже сделали
-                    заранее.
-                  </p>
+                <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6">
                   <input
                     type="file"
                     accept="image/*"
@@ -340,26 +272,13 @@ export function ProfileShotUploader(props: {
                     className="hidden"
                     disabled={busy}
                     onChange={(event) =>
-                      handleFileChange(
-                        selectedShot,
-                        event.currentTarget.files?.[0] ?? null
-                      )
+                      handleFileChange(selectedShot, event.currentTarget.files?.[0] ?? null)
                     }
                   />
-                  <span className="mt-4 inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6">
-                    Выбрать фото
-                  </span>
+                  Файл
                 </label>
               </div>
             )}
-
-            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-sm font-semibold text-white">Как получить лучший результат</p>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Держите голову ровно, не меняйте свет между ракурсами и избегайте сильных
-                фильтров. Чем чище профиль, тем стабильнее лицо в генерациях.
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -382,4 +301,22 @@ function normalizeUploadError(error: unknown) {
   }
 
   return error.message;
+}
+
+function normalizeCameraError(error: unknown) {
+  if (error instanceof DOMException) {
+    if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      return "Браузер или система запретили доступ к камере. На этом устройстве лучше выбрать 'Файл' или разрешить камеру в настройках браузера и ОС.";
+    }
+
+    if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      return "Камера не найдена. Выберите 'Файл' и загрузите готовое фото.";
+    }
+
+    if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+      return "Камера занята другим приложением. Закройте его или выберите 'Файл'.";
+    }
+  }
+
+  return "Не удалось открыть камеру. Попробуйте выбрать 'Файл'.";
 }
