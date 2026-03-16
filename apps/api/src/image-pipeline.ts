@@ -3,6 +3,7 @@ import sharp from "sharp";
 const CANONICAL_SIZE = 1024;
 const PREVIEW_SIZE = 256;
 const JPEG_QUALITY = 90;
+const MAX_UPLOAD_DIMENSION = 4096;
 
 export interface ProcessedImage {
   canonical: Buffer;
@@ -40,6 +41,29 @@ export async function processProfileShot(input: Buffer): Promise<ProcessedImage>
   };
 }
 
+export async function normalizeProfileUpload(input: Buffer): Promise<Buffer> {
+  const meta = await sharp(input).metadata();
+  const width = meta.width ?? 0;
+  const height = meta.height ?? 0;
+
+  if (!width || !height) {
+    return input;
+  }
+
+  if (width <= MAX_UPLOAD_DIMENSION && height <= MAX_UPLOAD_DIMENSION) {
+    return input;
+  }
+
+  return sharp(input)
+    .rotate()
+    .resize(MAX_UPLOAD_DIMENSION, MAX_UPLOAD_DIMENSION, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .jpeg({ quality: 92, mozjpeg: true })
+    .toBuffer();
+}
+
 export async function validateImage(input: Buffer): Promise<{ ok: boolean; error?: string }> {
   try {
     const meta = await sharp(input).metadata();
@@ -48,9 +72,6 @@ export async function validateImage(input: Buffer): Promise<{ ok: boolean; error
     }
     if (meta.width < 200 || meta.height < 200) {
       return { ok: false, error: "Image too small (min 200x200)" };
-    }
-    if (meta.width > 4096 || meta.height > 4096) {
-      return { ok: false, error: "Image too large (max 4096x4096)" };
     }
     return { ok: true };
   } catch {

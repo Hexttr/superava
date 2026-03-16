@@ -2,7 +2,7 @@ import type { ShotType } from "@superava/shared";
 import { prisma } from "../db.js";
 import { putObject } from "../storage.js";
 import { profileShotKey } from "../storage.js";
-import { processProfileShot, validateImage } from "../image-pipeline.js";
+import { normalizeProfileUpload, processProfileShot, validateImage } from "../image-pipeline.js";
 
 const SHOT_TYPES: ShotType[] = [
   "front_neutral",
@@ -52,12 +52,13 @@ export async function uploadProfileShot(
   shotType: ShotType,
   buffer: Buffer
 ): Promise<{ ok: boolean; error?: string }> {
-  const validation = await validateImage(buffer);
+  const normalizedBuffer = await normalizeProfileUpload(buffer);
+  const validation = await validateImage(normalizedBuffer);
   if (!validation.ok) {
     return validation;
   }
 
-  const { canonical, preview } = await processProfileShot(buffer);
+  const { canonical, preview } = await processProfileShot(normalizedBuffer);
 
   const canonicalKey = profileShotKey(profileId, shotType, "canonical");
   const previewKey = profileShotKey(profileId, shotType, "preview");

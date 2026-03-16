@@ -18,8 +18,11 @@ export function ProfileShotUploader(props: {
   const router = useRouter();
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPending, startTransition] = useTransition();
   const [activeShot, setActiveShot] = useState<ShotType | null>(null);
+  const [cameraShot, setCameraShot] = useState<ShotType | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const selectedShotRecord = useMemo(
     () =>
@@ -30,8 +33,22 @@ export function ProfileShotUploader(props: {
   );
 
   useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream;
+      void videoRef.current.play();
+    }
+  }, [stream]);
+
+  useEffect(() => {
     setMessage(null);
+    stopCamera();
   }, [selectedShot]);
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedShot) {
@@ -55,12 +72,58 @@ export function ProfileShotUploader(props: {
 
   function openCamera() {
     setMessage(null);
-    cameraInputRef.current?.click();
+    if (!selectedShot) {
+      return;
+    }
+
+    if (shouldUseNativeCameraCapture()) {
+      cameraInputRef.current?.click();
+      return;
+    }
+
+    void openBrowserCamera(selectedShot);
   }
 
   function openFilePicker() {
     setMessage(null);
     fileInputRef.current?.click();
+  }
+
+  async function openBrowserCamera(shotType: ShotType) {
+    stopCamera();
+
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function"
+    ) {
+      setMessage("В этом браузере встроенная камера недоступна. Используйте 'Файл'.");
+      return;
+    }
+
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 1280 },
+        },
+        audio: false,
+      });
+
+      setCameraShot(shotType);
+      setStream(mediaStream);
+    } catch {
+      setMessage("Не удалось открыть камеру. Используйте 'Файл' или разрешите доступ к камере.");
+    }
+  }
+
+  function stopCamera() {
+    setStream((current) => {
+      current?.getTracks().forEach((track) => track.stop());
+      return null;
+    });
+    setCameraShot(null);
   }
 
   async function uploadShot(shotType: ShotType, file: File) {
@@ -78,6 +141,38 @@ export function ProfileShotUploader(props: {
         setActiveShot(null);
       }
     });
+  }
+
+  async function captureCurrentShot() {
+    if (!cameraShot || !videoRef.current) {
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 1280;
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      setMessage("Не удалось сделать снимок.");
+      return;
+    }
+
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.92);
+    });
+
+    if (!blob) {
+      setMessage("Не удалось сделать снимок.");
+      return;
+    }
+
+    const file = new File([blob], `${cameraShot}.jpg`, { type: "image/jpeg" });
+    stopCamera();
+    await uploadShot(cameraShot, file);
   }
 
   function handleFileChange(shotType: ShotType, file: File | null) {
@@ -173,36 +268,65 @@ export function ProfileShotUploader(props: {
 
           <div className="space-y-4">
             <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-900/60">
-              <Image
-                src={getShotPreviewSrc(selectedShotRecord)}
-                alt={shotLabels[selectedShot]}
-                width={480}
-                height={480}
-                unoptimized
-                className={`aspect-square w-full object-cover ${
-                  selectedShotRecord.status === "missing" ? "opacity-60" : "opacity-100"
-                }`}
-              />
+              {cameraShot ? (
+                <div className="relative bg-black">
+                  <video ref={videoRef} playsInline muted className="aspect-square w-full object-cover" />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="h-[72%] w-[62%] rounded-[40%] border-2 border-white/60 shadow-[0_0_0_9999px_rgba(2,6,23,0.28)]" />
+                  </div>
+                </div>
+              ) : (
+                <Image
+                  src={getShotPreviewSrc(selectedShotRecord)}
+                  alt={shotLabels[selectedShot]}
+                  width={480}
+                  height={480}
+                  unoptimized
+                  className={`aspect-square w-full object-cover ${
+                    selectedShotRecord.status === "missing" ? "opacity-60" : "opacity-100"
+                  }`}
+                />
+              )}
             </div>
 
-            <div className="grid gap-3">
-              <button
-                type="button"
-                onClick={openCamera}
-                disabled={busy}
-                className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
-              >
-                Камера
-              </button>
-              <button
-                type="button"
-                onClick={openFilePicker}
-                disabled={busy}
-                className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6 disabled:opacity-70"
-              >
-                Файл
-              </button>
-            </div>
+            {cameraShot ? (
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={captureCurrentShot}
+                  disabled={isPending}
+                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+                >
+                  Снять
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+                >
+                  Назад
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                <button
+                  type="button"
+                  onClick={openCamera}
+                  disabled={busy}
+                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+                >
+                  Камера
+                </button>
+                <button
+                  type="button"
+                  onClick={openFilePicker}
+                  disabled={busy}
+                  className="inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/6 disabled:opacity-70"
+                >
+                  Файл
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -225,4 +349,14 @@ function normalizeUploadError(error: unknown) {
   }
 
   return error.message;
+}
+
+function shouldUseNativeCameraCapture() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)").matches ?? false;
+  return mobileUserAgent || coarsePointer;
 }
