@@ -289,6 +289,15 @@ function buildHomeRedirect(params: Record<string, string>) {
   return url.toString();
 }
 
+function buildProfileRedirect(params: Record<string, string>) {
+  const url = new URL(`${appConfig.webOrigin.replace(/\/$/, "")}/`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  url.hash = "profile";
+  return url.toString();
+}
+
 function buildTelegramStartUrl() {
   return `${appConfig.webOrigin.replace(/\/$/, "")}/auth/telegram`;
 }
@@ -970,7 +979,7 @@ export async function finishOAuthCallback(args: {
       ok: true as const,
       token,
       redirectTo: resolved.isNewUser
-        ? `${appConfig.webOrigin.replace(/\/$/, "")}/onboarding?socialSignup=${providerToSlug(provider)}`
+        ? buildProfileRedirect({ socialSignup: providerToSlug(provider) })
         : `${appConfig.webOrigin.replace(/\/$/, "")}/`,
     };
   } catch (error) {
@@ -1062,7 +1071,7 @@ export async function finishTelegramVerification(args: {
       ok: true as const,
       token,
       redirectTo: resolved.isNewUser
-        ? `${appConfig.webOrigin.replace(/\/$/, "")}/onboarding?socialSignup=telegram`
+        ? buildProfileRedirect({ socialSignup: "telegram" })
         : `${appConfig.webOrigin.replace(/\/$/, "")}/`,
       statusCode: 200,
     };

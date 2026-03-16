@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +9,6 @@ import type { PhotoProfile, ShotType } from "@superava/shared";
 import { StatusPill } from "@superava/ui";
 import { uploadProfileShot } from "@/lib/api";
 import {
-  formatShotStep,
   shotAngleLabels,
   shotCaptureTips,
   shotGuidanceText,
@@ -16,7 +16,12 @@ import {
   shotStatusLabels,
 } from "@/lib/ui-text";
 
-export function ProfileShotUploader(props: { profile: PhotoProfile }) {
+export function ProfileShotUploader(props: {
+  profile: PhotoProfile;
+  selectedShot: ShotType | null;
+  onClose: () => void;
+}) {
+  const { onClose, profile, selectedShot } = props;
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -24,20 +29,12 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
   const [cameraShot, setCameraShot] = useState<ShotType | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const nextMissingShot = useMemo(
-    () => props.profile.shots.find((shot) => shot.status === "missing")?.type ?? null,
-    [props.profile.shots]
-  );
-  const readyShots = useMemo(
-    () => props.profile.shots.filter((shot) => shot.status !== "missing").length,
-    [props.profile.shots]
-  );
-  const nextShotIndex = useMemo(
+  const selectedShotRecord = useMemo(
     () =>
-      nextMissingShot
-        ? props.profile.shots.findIndex((shot) => shot.type === nextMissingShot)
-        : props.profile.shots.length - 1,
-    [nextMissingShot, props.profile.shots]
+      selectedShot
+        ? profile.shots.find((shot) => shot.type === selectedShot) ?? null
+        : null,
+    [profile.shots, selectedShot]
   );
 
   useEffect(() => {
@@ -52,6 +49,31 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
       stopCamera();
     };
   }, []);
+
+  useEffect(() => {
+    setMessage(null);
+    stopCamera();
+  }, [selectedShot]);
+
+  useEffect(() => {
+    if (!selectedShot) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isPending) {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isPending, onClose, selectedShot]);
 
   async function openCamera(shotType: ShotType) {
     setMessage(null);
@@ -91,6 +113,7 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
         await uploadProfileShot(shotType, file);
         setMessage(`Фото "${shotLabels[shotType]}" загружено.`);
         router.refresh();
+        onClose();
       } catch (error) {
         setMessage(normalizeUploadError(error));
       } finally {
@@ -150,191 +173,166 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
     return `${shot.previewUrl}${version}`;
   }
 
-  return (
-    <div className="space-y-4">
-      {message ? (
-        <div className="rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
-          {message}
-        </div>
-      ) : null}
+  if (!selectedShot || !selectedShotRecord || typeof document === "undefined") {
+    return null;
+  }
 
-      <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="max-w-xl">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
-                Guided Flow
-              </p>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
-                Соберите стабильный профиль из шести ракурсов
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                Чем аккуратнее и ровнее собран профиль, тем чаще генерация сохраняет ваше
-                лицо, выражение и пропорции без искажений.
-              </p>
-            </div>
-            <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-3 text-right">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Готово</p>
-              <p className="mt-1 text-3xl font-semibold text-white">{readyShots}/6</p>
-              <p className="mt-1 text-xs text-slate-400">
-                {props.profile.completionPercent}% профиля собрано
-              </p>
-            </div>
-          </div>
+  const busy = isPending && activeShot === selectedShot;
 
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {shotCaptureTips.map((tip) => (
-              <div
-                key={tip}
-                className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-slate-300"
-              >
-                {tip}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[1.75rem] border border-cyan-400/20 bg-cyan-400/8 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-200">
-            Следующий ракурс
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-white">
-            {nextMissingShot ? shotLabels[nextMissingShot] : "Профиль собран"}
-          </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            {nextMissingShot
-              ? shotGuidanceText[nextMissingShot]
-              : "Все шесть ракурсов уже загружены. Можно переходить к генерациям и запускать сцены."}
-          </p>
-          {nextMissingShot ? (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/82 p-4"
+      onClick={() => {
+        if (!isPending) {
+          onClose();
+        }
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Загрузка ракурса ${shotLabels[selectedShot]}`}
+    >
+      <div
+        className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#171126] p-5 shadow-[0_30px_120px_rgba(15,23,42,0.5)] sm:p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
+              Ракурс профиля
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">
+              {shotLabels[selectedShot]}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              {shotGuidanceText[selectedShot]}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <StatusPill label={shotAngleLabels[selectedShot]} tone="neutral" />
               <StatusPill
-                label={formatShotStep(nextShotIndex, props.profile.shots.length)}
-                tone="accent"
-              />
-              <StatusPill label={shotAngleLabels[nextMissingShot]} tone="neutral" />
-            </div>
-          ) : (
-            <div className="mt-4">
-              <StatusPill label="Профиль готов" tone="success" />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {cameraShot ? (
-        <div className="rounded-[2rem] border border-cyan-400/20 bg-slate-950/60 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-white">Камера</p>
-              <p className="text-sm text-slate-400">{shotLabels[cameraShot]}</p>
-            </div>
-            <Image
-              src={`/api/shot-reference/${cameraShot}?size=80`}
-              alt=""
-              width={80}
-              height={80}
-              unoptimized
-              className="h-16 w-16 rounded-2xl border border-white/10 object-cover"
-            />
-          </div>
-
-          <div className="relative mt-4 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black">
-            <video ref={videoRef} playsInline muted className="aspect-square w-full object-cover" />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="h-[72%] w-[62%] rounded-[40%] border-2 border-white/60 shadow-[0_0_0_9999px_rgba(2,6,23,0.28)]" />
-            </div>
-          </div>
-
-          <div className="mt-4 flex gap-3">
-            <button
-              type="button"
-              onClick={captureCurrentShot}
-              disabled={isPending}
-              className="inline-flex flex-1 items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
-            >
-              Снять
-            </button>
-            <button
-              type="button"
-              onClick={stopCamera}
-              className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
-            >
-              Закрыть
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {props.profile.shots.map((shot) => {
-          const isCurrent = nextMissingShot === shot.type;
-          const busy = isPending && activeShot === shot.type;
-
-          return (
-            <div
-              key={shot.id}
-              className={`rounded-[1.75rem] border p-3 ${
-                isCurrent
-                  ? "border-cyan-400/30 bg-cyan-400/8 shadow-[0_10px_40px_rgba(34,211,238,0.08)]"
-                  : "border-white/10 bg-slate-950/55"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-white">{shotLabels[shot.type]}</p>
-                  <p className="mt-1 text-xs text-slate-500">{shotAngleLabels[shot.type]}</p>
-                </div>
-                <StatusPill
-                  label={
-                    busy
-                      ? shotStatusLabels.uploading
-                      : shot.status === "approved"
-                        ? shotStatusLabels.approved
-                        : shot.status === "missing"
-                          ? shotStatusLabels.missing
-                          : shotStatusLabels.uploaded
-                  }
-                  tone={
-                    busy
+                label={
+                  selectedShotRecord.status === "approved"
+                    ? shotStatusLabels.approved
+                    : selectedShotRecord.status === "uploaded"
+                      ? shotStatusLabels.uploaded
+                      : shotStatusLabels.missing
+                }
+                tone={
+                  selectedShotRecord.status === "approved"
+                    ? "success"
+                    : selectedShotRecord.status === "uploaded"
                       ? "accent"
-                      : shot.status === "approved"
-                        ? "success"
-                        : shot.status === "missing"
-                          ? "warning"
-                          : "accent"
-                  }
-                />
+                      : "warning"
+                }
+              />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/8 disabled:opacity-60"
+          >
+            Закрыть
+          </button>
+        </div>
+
+        {message ? (
+          <div className="mt-4 rounded-[1.5rem] border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100">
+            {message}
+          </div>
+        ) : null}
+
+        <div className="mt-5 grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-900/60">
+              <Image
+                src={getShotPreviewSrc(selectedShotRecord)}
+                alt={shotLabels[selectedShot]}
+                width={480}
+                height={480}
+                unoptimized
+                className={`aspect-square w-full object-cover ${
+                  selectedShotRecord.status === "missing" ? "opacity-60" : "opacity-100"
+                }`}
+              />
+            </div>
+
+            <div className="grid gap-3">
+              {shotCaptureTips.map((tip) => (
+                <div
+                  key={tip}
+                  className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] px-4 py-3 text-sm leading-6 text-slate-300"
+                >
+                  {tip}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {cameraShot ? (
+              <div className="rounded-[1.75rem] border border-cyan-400/20 bg-slate-950/60 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">Камера</p>
+                    <p className="text-sm text-slate-400">{shotLabels[cameraShot]}</p>
+                  </div>
+                  <Image
+                    src={`/api/shot-reference/${cameraShot}?size=80`}
+                    alt=""
+                    width={80}
+                    height={80}
+                    unoptimized
+                    className="h-16 w-16 rounded-2xl border border-white/10 object-cover"
+                  />
+                </div>
+
+                <div className="relative mt-4 overflow-hidden rounded-[1.75rem] border border-white/10 bg-black">
+                  <video ref={videoRef} playsInline muted className="aspect-square w-full object-cover" />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="h-[72%] w-[62%] rounded-[40%] border-2 border-white/60 shadow-[0_0_0_9999px_rgba(2,6,23,0.28)]" />
+                  </div>
+                </div>
+
+                <div className="mt-4 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={captureCurrentShot}
+                    disabled={isPending}
+                    className="inline-flex flex-1 items-center justify-center rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+                  >
+                    Снять
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/6"
+                  >
+                    Назад
+                  </button>
+                </div>
               </div>
-
-              <div className="mt-3 overflow-hidden rounded-[1.5rem] border border-white/10">
-                <Image
-                  src={getShotPreviewSrc(shot)}
-                  alt={shotLabels[shot.type]}
-                  width={220}
-                  height={220}
-                  unoptimized
-                  className={`aspect-square w-full object-cover ${
-                    shot.status === "missing" ? "opacity-60" : "opacity-100"
-                  }`}
-                />
-              </div>
-
-              <p className="mt-3 text-sm leading-6 text-slate-400">
-                {shotGuidanceText[shot.type]}
-              </p>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
+            ) : (
+              <div className="grid gap-4">
                 <button
                   type="button"
-                  onClick={() => void openCamera(shot.type)}
+                  onClick={() => void openCamera(selectedShot)}
                   disabled={busy}
-                  className="inline-flex items-center justify-center rounded-full bg-cyan-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:opacity-70"
+                  className="rounded-[1.75rem] border border-cyan-400/20 bg-cyan-400/10 p-5 text-left transition hover:border-cyan-300/40 hover:bg-cyan-400/14 disabled:opacity-60"
                 >
-                  Камера
+                  <p className="text-base font-semibold text-white">Камера</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    Откройте фронтальную камеру, выровняйте лицо по форме и сделайте снимок сразу
+                    в этом окне.
+                  </p>
                 </button>
-                <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-white/15 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/6">
-                  Файл
+
+                <label className="cursor-pointer rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.05]">
+                  <p className="text-base font-semibold text-white">Файл</p>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    Выберите готовое фото из галереи или загрузите снимок, который уже сделали
+                    заранее.
+                  </p>
                   <input
                     type="file"
                     accept="image/*"
@@ -343,18 +341,30 @@ export function ProfileShotUploader(props: { profile: PhotoProfile }) {
                     disabled={busy}
                     onChange={(event) =>
                       handleFileChange(
-                        shot.type,
+                        selectedShot,
                         event.currentTarget.files?.[0] ?? null
                       )
                     }
                   />
+                  <span className="mt-4 inline-flex items-center justify-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/6">
+                    Выбрать фото
+                  </span>
                 </label>
               </div>
+            )}
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-4">
+              <p className="text-sm font-semibold text-white">Как получить лучший результат</p>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Держите голову ровно, не меняйте свет между ракурсами и избегайте сильных
+                фильтров. Чем чище профиль, тем стабильнее лицо в генерациях.
+              </p>
             </div>
-          );
-        })}
+          </div>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -5,9 +5,9 @@ import { SectionCard } from "@superava/ui";
 import { AuthPageBackground } from "@/components/auth-page-background";
 import { ArrowRightIcon, GalleryIcon, UploadIcon } from "@/components/ui-icons";
 import { GenerationGallery } from "@/components/generation-gallery";
+import { HomeProfileSection } from "@/components/home-profile-section";
 import { HomeDirectionCards } from "@/components/home-direction-cards";
 import { AccountBlock } from "@/components/account-block";
-import { ProfileProgressLine } from "@/components/profile-progress-line";
 import { authProviderMessage, socialProviderLabel, socialProviderOrder } from "@/lib/social-auth";
 import {
   getBillingMe,
@@ -52,6 +52,7 @@ export default async function Home(props: {
   const socialLinkProvider = firstSearchParam(searchParams.provider);
   const socialLinkError = firstSearchParam(searchParams.socialLinkError);
   const socialLinked = firstSearchParam(searchParams.socialLinked);
+  const socialSignup = firstSearchParam(searchParams.socialSignup);
   const socialLinkedProvider =
     socialLinked &&
     socialProviderOrder.includes(socialLinked.toUpperCase() as (typeof socialProviderOrder)[number])
@@ -64,6 +65,14 @@ export default async function Home(props: {
           socialLinkedProvider as (typeof socialProviderOrder)[number]
         )} подключен к аккаунту.`
       : null;
+  const socialSignupProvider =
+    socialSignup &&
+    socialProviderOrder.includes(socialSignup.toUpperCase() as (typeof socialProviderOrder)[number])
+      ? (socialSignup.toUpperCase() as (typeof socialProviderOrder)[number])
+      : null;
+  const profileNotice = socialSignupProvider
+    ? `${socialProviderLabel(socialSignupProvider)} подключен. Теперь добавьте 6 ракурсов прямо на главной, чтобы открыть генерации.`
+    : null;
 
   const [
     user,
@@ -142,7 +151,7 @@ export default async function Home(props: {
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
-                href="/onboarding"
+                href="/#profile"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-fuchsia-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-fuchsia-400"
               >
                 <UploadIcon />
@@ -178,7 +187,7 @@ export default async function Home(props: {
       </section>
 
       {/* Profile */}
-      <section className="mt-6">
+      <section id="profile" className="mt-6 scroll-mt-24">
         <div className="rounded-[2rem] border border-white/10 bg-white/5 p-5 shadow-[0_12px_60px_rgba(17,24,39,0.16)] backdrop-blur sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -202,7 +211,7 @@ export default async function Home(props: {
           </div>
 
           <div className="mt-6">
-            <ProfileProgressLine profile={profile} />
+            <HomeProfileSection profile={profile} notice={profileNotice} />
           </div>
         </div>
       </section>
